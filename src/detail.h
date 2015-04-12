@@ -10,6 +10,34 @@
 
 #include "pmat.h"
 #include "net.h"
+#include "Log.h"
+
+#include <string>
+#include <iostream>
+#include <iomanip>
+#include <typeinfo>
+#include <cxxabi.h>
+
+#define DEBUG_TYPE(x) ([]() -> std::string { typedef void(*T)x; return debug_type<T>(T(), #x).result; })()
+
+template<typename T>
+struct debug_type
+{
+	template<typename U>
+	debug_type(void(*)(U), const std::string& p_str)
+	{
+		std::string str(p_str.begin() + 1, p_str.end() - 1);
+		str += " => ";
+		char * name = 0;
+		int status;
+		name = abi::__cxa_demangle(typeid(U).name(), 0, 0, &status);
+		if (name != 0) { str += name; }
+		else { str += typeid(U).name(); }
+		free(name);
+		result = str;
+	}
+	std::string result;
+};
 
 /* Reader/writer support *******************************************************************/
 
