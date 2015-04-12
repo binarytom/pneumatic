@@ -12,9 +12,9 @@ int main(void) {
 
 	ifstream is;
 	is.open("sample.pmat", ios::binary);
-	char *data = new char[1024];
+	char *data = new char[256 * 1024];
 	while(is) {
-		is.read(data, 1023);
+		is.read(data, 256 * 1023);
 		auto len = is.gcount();
 
 		pmat::header fr;
@@ -22,14 +22,15 @@ int main(void) {
 		std::tie(fr, remainder) = detail::read<pmat::header>(asio::buffer(data, len));
 		DEBUG << "Magic: " << fr.magic;
 		DEBUG << "Flags:";
-		DEBUG << " * Big-endian: " << fr.flags.big_endian ? "yes" : "no";
-		DEBUG << " * Int64:      " << fr.flags.big_endian ? "yes" : "no";
-		DEBUG << " * Ptr64:      " << fr.flags.big_endian ? "yes" : "no";
-		DEBUG << " * NV64:       " << fr.flags.big_endian ? "yes" : "no";
-		DEBUG << " * Threads:    " << fr.flags.big_endian ? "yes" : "no";
-		int rev = (fr.perl_ver      ) & 0xFF;
-		int ver = (fr.perl_ver >>  8) & 0xFFFF;
-		int sub = (fr.perl_ver >> 24) & 0xFFFF;
+		DEBUG << " * Big-endian:  " << fr.flags.big_endian ? "yes" : "no";
+		DEBUG << " * Int64:       " << fr.flags.integer_64 ? "yes" : "no";
+		DEBUG << " * Ptr64:       " << fr.flags.pointer_64 ? "yes" : "no";
+		DEBUG << " * Long double: " << fr.flags.float_64 ? "yes" : "no";
+		DEBUG << " * Threads:     " << fr.flags.threads ? "yes" : "no";
+		uint32_t pv = net::ntoh(fr.perl_ver);
+		int rev = (pv      ) & 0xFF;
+		int ver = (uint16_t) ((pv >>  8) & 0xFFFF);
+		int sub = (uint16_t) ((pv >> 24) & 0xFFFF);
 		DEBUG << "PMAT format " << to_string(fr.major_ver) << "." << to_string(fr.minor_ver) << " generated on Perl " << to_string(rev) << "." << to_string(ver) << "." << to_string(sub);
 	}
 	DEBUG << "Done";
