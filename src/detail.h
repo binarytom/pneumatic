@@ -296,7 +296,7 @@ public:
 				break;
 			}
 			case pmat::sv_type_t::SVtARRAY: {
-				DEBUG << "This is a array";
+				DEBUG << "This be array";
 				pmat::sv_array array;
 				(*this)(array.count);
 				(*this)(array.flags);
