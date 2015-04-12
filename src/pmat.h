@@ -6,6 +6,7 @@
 #include <boost/fusion/include/define_struct.hpp>
 
 #include "BitField.h"
+#include "Log.h"
 
 namespace pmat {
 	/* PMAT magic */
@@ -128,7 +129,7 @@ namespace pmat {
 	using typevec16_t = pmat::vec<uint16_t, pmat::type>;
 	using typevec32_t = pmat::vec<uint32_t, pmat::type>;
 	using rootvec32_t = pmat::vec<uint32_t, pmat::root>;
-	using ptrvec64_t = pmat::vec<uint64_t, pmat::ptr_t>;
+	using ptrvec_t = pmat::vec<::pmat::uint, pmat::ptr_t>;
 	using bytevec32_t = pmat::vec<uint32_t, uint8_t>;
 
 };
@@ -143,7 +144,7 @@ BOOST_FUSION_DEFINE_STRUCT(
 
 BOOST_FUSION_DEFINE_STRUCT(
 	(pmat), stack,
-	(pmat::ptrvec64_t, elem)
+	(pmat::ptrvec_t, elem)
 )
 
 BOOST_FUSION_DEFINE_STRUCT(
@@ -297,17 +298,59 @@ BOOST_FUSION_DEFINE_STRUCT(
 	(uint8_t, minor_ver)
 	(uint32_t, perl_ver)
 	(pmat::typevec8_t, types)
-	(pmat::roots, roots)
-	(pmat::stack, stack)
-	(pmat::heap, heap)
 )
 
 namespace pmat {
 	class state_t {
 	public:
-		state_t() { }
-		~state_t() { }
 		std::vector<pmat::type> types;
+		std::map<pmat::ptr_t, pmat::sv*> sv_by_addr_;
+		std::map<pmat::sv_type_t, size_t> sv_count_by_type_;
+		std::map<pmat::sv_type_t, size_t> sv_size_by_type_;
+
+		explicit state_t() { }
+		~state_t() {
+			DEBUG << "We ended up with the following counts:";
+			for(auto &k : sv_count_by_type_) {
+				DEBUG << " * " << sv_type_by_id(k.first) << " - " << (int) k.second;
+			}
+			DEBUG << "... and sizes:";
+			size_t total = 0;
+			for(auto &k : sv_size_by_type_) {
+				DEBUG << " * " << sv_type_by_id(k.first) << " - " << (int) k.second;
+				total += k.second;
+			}
+			DEBUG << "In total, there were " << (int)sv_by_addr_.size() << " SVs totalling " << (int)total << " bytes";
+	   	}
+
+		pmat::sv &sv_by_addr(const pmat::ptr_t &addr) const { return *(sv_by_addr_.at(addr)); }
+	
+		void add_sv(pmat::sv &sv) {
+			sv_by_addr_[sv.address] = &sv;
+			++sv_count_by_type_[sv.type];
+			sv_size_by_type_[sv.type] += sv.size;
+		}
+	
+		std::string sv_type_by_id(const sv_type_t &id) const {
+			switch(id) {
+			case sv_type_t::SVtEND: return "SVtEND";
+			case sv_type_t::SVtGLOB: return "SVtGLOB";
+			case sv_type_t::SVtSCALAR: return "SVtSCALAR";
+			case sv_type_t::SVtREF: return "SVtREF";
+			case sv_type_t::SVtARRAY: return "SVtARRAY";
+			case sv_type_t::SVtHASH: return "SVtHASH";
+			case sv_type_t::SVtSTASH: return "SVtSTASH";
+			case sv_type_t::SVtCODE: return "SVtCODE";
+			case sv_type_t::SVtIO: return "SVtIO";
+			case sv_type_t::SVtLVALUE: return "SVtLVALUE";
+			case sv_type_t::SVtREGEXP: return "SVtREGEXP";
+			case sv_type_t::SVtFORMAT: return "SVtFORMAT";
+			case sv_type_t::SVtINVLIST: return "SVtINVLIST";
+			case sv_type_t::SVtMAGIC: return "SVtMAGIC";
+			case sv_type_t::SVtUNKNOWN: return "SVtUNKNOWN";
+			default: return "unknown sv type";
+			}
+		}
 	};
 };
 
