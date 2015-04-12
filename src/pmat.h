@@ -405,10 +405,14 @@ namespace pmat {
 		std::vector<pmat::type> types;
 		std::map<pmat::ptr_t, pmat::sv*> sv_by_addr_;
 		std::map<pmat::sv_type_t, size_t> sv_count_by_type_;
+		std::map<std::string, size_t> sv_count_by_blessed_type_;
 		std::map<pmat::sv_type_t, size_t> sv_size_by_type_;
+		std::map<std::string, size_t> sv_size_by_blessed_type_;
+		std::map<pmat::ptr_t, std::vector<pmat::sv *>> sv_blessed_pending_;
 
 		explicit state_t() { }
 		~state_t() {
+			/** Provides something like the pmat-sizes output */
 			DEBUG << "We ended up with the following counts:";
 			for(auto &k : sv_count_by_type_) {
 				DEBUG << " * " << sv_type_by_id(k.first) << " - " << (int) k.second;
@@ -422,14 +426,79 @@ namespace pmat {
 			DEBUG << "In total, there were " << (int)sv_by_addr_.size() << " SVs totalling " << (int)total << " bytes";
 	   	}
 
+		void dump_sizes() {
+			/** Provides something like the pmat-sizes output */
+			DEBUG << "We ended up with the following counts:";
+			for(auto &k : sv_count_by_type_) {
+				DEBUG << " * " << sv_type_by_id(k.first) << " - " << (int) k.second;
+			}
+			DEBUG << "... and sizes:";
+			size_t total = 0;
+			for(auto &k : sv_size_by_type_) {
+				DEBUG << " * " << sv_type_by_id(k.first) << " - " << (int) k.second;
+				total += k.second;
+			}
+			DEBUG << "In total, there were " << (int)sv_by_addr_.size() << " SVs totalling " << (int)total << " bytes";
+		}
+
 		pmat::sv &sv_by_addr(const pmat::ptr_t &addr) const { return *(sv_by_addr_.at(addr)); }
 	
 		void add_sv(pmat::sv &sv) {
+			// DEBUG << "Adding SV at " << (void *) sv.address;
 			sv_by_addr_[sv.address] = &sv;
 			++sv_count_by_type_[sv.type];
 			sv_size_by_type_[sv.type] += sv.size;
+			if(sv.blessed != nullptr)
+				update_blessed(sv);
+
+			auto it = sv_blessed_pending_.find(sv.address);
+			if(sv_blessed_pending_.cend() != it) {
+				DEBUG << "Found " << it->second.size() << " items relying on this SV for blessed pointer";
+				// auto &it = sv_blessed_pending_[sv.blessed];
+				for(auto v : it->second) {
+					update_blessed(*v);
+				}
+				sv_blessed_pending_.erase(it);
+			}
+		}
+
+		bool have_sv_at(pmat::ptr_t &ptr) {
+			return end(sv_by_addr_) != sv_by_addr_.find(ptr);
+	   	}
+
+		void update_blessed(pmat::sv &sv) {
+			if(have_sv_at(sv.blessed)) {
+				auto bt = sv_blessed_type(sv);
+				++sv_count_by_blessed_type_[bt];
+				sv_size_by_blessed_type_[bt] += sv.size;
+			} else {
+				DEBUG << "Could not find pointer for blessed string, deferring";
+				auto &it = sv_blessed_pending_[sv.blessed];
+				it.push_back(&sv);
+			}
+		}
+
+		void finish() {
+			if(!sv_blessed_pending_.empty()) {
+				ERROR << "Still had SVs that didn't resolve blessed pointer";
+			}
+			sv_blessed_pending_.clear();
 		}
 	
+		std::string sv_blessed_type(const pmat::sv &sv) const {
+			auto base = sv_type_by_id(sv.type);
+			if(sv.blessed == nullptr) return base;
+			DEBUG << "We have " << (void *)sv.blessed << " as a blessed pointer";
+			return base;
+			auto bs = sv_by_addr(sv.blessed);
+			if(bs.type != sv_type_t::SVtSCALAR) {
+				ERROR << "We have something that has been blessed into something that isn't a scalar: " << (int)bs.type;
+				return base;
+			}
+			return base;
+			// return base + "(" + sv_by_addr(sv.blessed).pv + ")";
+		}
+
 		std::string sv_type_by_id(const sv_type_t &id) const {
 			switch(id) {
 			case sv_type_t::SVtEND: return "SVtEND";
