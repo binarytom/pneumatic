@@ -146,9 +146,7 @@ public:
         uint64_t length = 0;
         (*this)(length);
 		DEBUG << " String length " << length;
-		if(length > 0x00800000) {
-			val = "<error, " + std::to_string(length) + " too large>";
-			DEBUG << "String overflow " << val;
+		if(-1l == (int64_t)length) {
 			return;
 		}
 		val = std::string(asio::buffer_cast<char const*>(buf_), length);
