@@ -158,14 +158,15 @@ public:
     }
 
     void operator()(pmat::flags_t &val) const {
-        uint8_t flags = 0;
-        (*this)(flags);
+        (*this)(val.data);
+		/*
 		val.big_endian = flags & 0x01;
 		val.integer_64 = flags & 0x02;
 		val.pointer_64 = flags & 0x04;
 		val.float_64 = flags & 0x08;
 		val.threads = flags & 0x10;
-		DEBUG << "Applied flags: " << (uint32_t) flags;
+		*/
+		DEBUG << "Applied flags: " << (uint32_t) val.data;
     }
 
     void operator()(pmat::ptr_t &val) const {

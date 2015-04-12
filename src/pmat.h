@@ -4,6 +4,8 @@
 #include <vector>
 #include <boost/fusion/include/define_struct.hpp>
 
+#include "BitField.h"
+
 namespace pmat {
 	/* PMAT magic */
 	using header_magic_t = std::integral_constant<uint32_t, 0x54414d50>;
@@ -19,17 +21,19 @@ namespace pmat {
 		std::vector<T> items;
 	};
 
-	struct flags_t {
+	union flags_t {
+		uint8_t data;
+
 		/** True if this is big-endian */
-		bool big_endian;
+		BitField<0, 1> big_endian;
 		/** Integers (INT/UV/IV) are 64-bit */
-		bool integer_64;
+		BitField<1, 1> integer_64;
 		/** Pointers are 64-bit */
-		bool pointer_64;
+		BitField<2, 1> pointer_64;
 		/** Floats (NV) are 64-bit */
-		bool float_64;
+		BitField<3, 1> float_64;
 		/** ithreads enabled */
-		bool threads;
+		BitField<4, 1> threads;
 	};
 
 	typedef enum {

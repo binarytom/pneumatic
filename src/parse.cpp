@@ -22,11 +22,11 @@ int main(void) {
 		std::tie(fr, remainder) = detail::read<pmat::header>(asio::buffer(data, len));
 		DEBUG << "Magic: " << fr.magic;
 		DEBUG << "Flags:";
-		DEBUG << " * Big-endian:  " << fr.flags.big_endian ? "yes" : "no";
-		DEBUG << " * Int64:       " << fr.flags.integer_64 ? "yes" : "no";
-		DEBUG << " * Ptr64:       " << fr.flags.pointer_64 ? "yes" : "no";
-		DEBUG << " * Long double: " << fr.flags.float_64 ? "yes" : "no";
-		DEBUG << " * Threads:     " << fr.flags.threads ? "yes" : "no";
+		DEBUG << " * Big-endian:  " << (fr.flags.big_endian ? "yes" : "no");
+		DEBUG << " * Int64:       " << (fr.flags.integer_64 ? "yes" : "no");
+		DEBUG << " * Ptr64:       " << (fr.flags.pointer_64 ? "yes" : "no");
+		DEBUG << " * Long double: " << (fr.flags.float_64 ? "yes" : "no");
+		DEBUG << " * Threads:     " << (fr.flags.threads ? "yes" : "no");
 		uint32_t pv = net::ntoh(fr.perl_ver);
 		int rev = (pv      ) & 0xFF;
 		int ver = (uint16_t) ((pv >>  8) & 0xFFFF);
