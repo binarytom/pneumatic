@@ -251,7 +251,13 @@ public:
 			pmat::type base_type = pmat_state_.types[0];
 			pmat::type spec_type = pmat_state_.types[(int) v.type];
 			DEBUG << "Scalar - will expect " << (uint32_t)base_type.headerlen << " bytes header, " << (uint32_t)base_type.nptrs << " pointers, " << (uint32_t)base_type.nstrs << " strings";
-			DEBUG << "then " << (uint32_t)spec_type.headerlen << " bytes header, " << (uint32_t)spec_type.nptrs << " pointers, " << (uint32_t)spec_type.nstrs << " strings";
+			const size_t total = (size_t)base_type.headerlen + sizeof(pmat::ptr_t) * (size_t)base_type.nptrs;
+			DEBUG << " Calculated " << total << " bytes, plus " << (uint32_t)base_type.nstrs << " strings";
+
+			/* so we now have information about the total size of the serialized SV data, isolate it into
+			 * a new const_buffer and work with that first
+			 */
+			// auto sv_buf = const_buffer { buf_, 
 
 			/* Generic */
 			(*this)(v.address);
