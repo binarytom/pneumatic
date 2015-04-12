@@ -147,8 +147,107 @@ BOOST_FUSION_DEFINE_STRUCT(
 	(pmat::ptrvec_t, elem)
 )
 
-BOOST_FUSION_DEFINE_STRUCT(
-	(pmat), sv,
+namespace pmat {
+	class sv {
+	public:
+		pmat::sv_type_t type;
+		pmat::ptr_t address;
+		uint32_t refcnt;
+		uint64_t size;
+		pmat::ptr_t blessed;
+
+		sv():type{},address{},refcnt{0},size{0},blessed{} { }
+		sv(const sv &v):type{v.type},address{v.address},refcnt{v.refcnt},size{v.size},blessed{v.blessed} { }
+	};
+
+	class sv_scalar:public sv {
+	public:
+		uint8_t flags;
+		uint64_t iv;
+		double nv;
+		uint64_t pvlen;
+		pmat::ptr_t ourstash;
+		std::string pv;
+
+		sv_scalar() { }
+		sv_scalar(const sv &v):sv{v} { }
+	};
+
+	class sv_hash:public sv {
+	public:
+		pmat::uint count;
+		pmat::ptr_t backrefs;
+		pmat::hash_elem_t elements;
+		sv_hash() { }
+		sv_hash(const sv &v):sv{v} { }
+	};
+	class sv_stash:public sv_hash {
+	public:
+		pmat::ptr_t mro_linear_all;
+		pmat::ptr_t mro_linear_current;
+		pmat::ptr_t mro_nextmethod;
+		pmat::ptr_t mro_isa;
+		std::string name;
+		sv_stash() { }
+		sv_stash(const sv &v):sv_hash{v} { }
+	};
+
+	class sv_ref:public sv {
+	public:
+		uint8_t flags;
+		pmat::ptr_t rv;
+		pmat::ptr_t ourstash;
+		sv_ref() { }
+		sv_ref(const sv &v):sv{v} { }
+	};
+
+	class sv_glob:public sv {
+	public:
+		uint64_t line;
+		pmat::ptr_t stash;
+		pmat::ptr_t scalar;
+		pmat::ptr_t array;
+		pmat::ptr_t hash;
+		pmat::ptr_t code;
+		pmat::ptr_t egv;
+		pmat::ptr_t io;
+		pmat::ptr_t form;
+		std::string name;
+		std::string file;
+		sv_glob() { }
+		sv_glob(const sv &v):sv{v} { }
+	};
+	class sv_array:public sv {
+	public:
+		uint64_t count;
+		uint8_t flags;
+		std::vector<pmat::ptr_t> elements;
+		sv_array() { }
+		sv_array(const sv &v):sv{v} { }
+	};
+
+	class sv_io:public sv {
+	public:
+		pmat::ptr_t top;
+		pmat::ptr_t format;
+		pmat::ptr_t bottom;
+		sv_io() { }
+		sv_io(const sv &v):sv{v} { }
+	};
+
+	class sv_lvalue:public sv {
+	public:
+		uint8_t type;
+		pmat::uint offset;
+		pmat::uint length;
+		pmat::ptr_t target;
+		sv_lvalue() { }
+		sv_lvalue(const sv &v):sv{v} { }
+	};
+};
+
+BOOST_FUSION_ADAPT_STRUCT(
+	pmat::sv,
 	(pmat::sv_type_t, type)
 	(pmat::ptr_t, address)
 	(uint32_t, refcnt)
@@ -156,8 +255,8 @@ BOOST_FUSION_DEFINE_STRUCT(
 	(pmat::ptr_t, blessed)
 )
 
-BOOST_FUSION_DEFINE_STRUCT(
-	(pmat), sv_scalar,
+BOOST_FUSION_ADAPT_STRUCT(
+	pmat::sv_scalar,
 	(uint8_t, flags)
 	(uint64_t, iv)
 	(double, nv)
@@ -166,15 +265,15 @@ BOOST_FUSION_DEFINE_STRUCT(
 	(std::string, pv)
 )
 
-BOOST_FUSION_DEFINE_STRUCT(
-	(pmat), sv_hash,
+BOOST_FUSION_ADAPT_STRUCT(
+	pmat::sv_hash,
 	(pmat::uint, count)
 	(pmat::ptr_t, backrefs)
 	(pmat::hash_elem_t, elements)
 )
 
-BOOST_FUSION_DEFINE_STRUCT(
-	(pmat), sv_stash,
+BOOST_FUSION_ADAPT_STRUCT(
+	pmat::sv_stash,
 	(pmat::uint, count)
 	(pmat::ptr_t, backrefs)
 	(pmat::ptr_t, mro_linear_all)
@@ -185,11 +284,48 @@ BOOST_FUSION_DEFINE_STRUCT(
 	(pmat::hash_elem_t, elements)
 )
 
-BOOST_FUSION_DEFINE_STRUCT(
-	(pmat), sv_ref,
+BOOST_FUSION_ADAPT_STRUCT(
+	pmat::sv_ref,
 	(uint8_t, flags)
 	(pmat::ptr_t, rv)
 	(pmat::ptr_t, ourstash)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+	pmat::sv_glob,
+	(uint64_t, line)
+	(pmat::ptr_t, stash)
+	(pmat::ptr_t, scalar)
+	(pmat::ptr_t, array)
+	(pmat::ptr_t, hash)
+	(pmat::ptr_t, code)
+	(pmat::ptr_t, egv)
+	(pmat::ptr_t, io)
+	(pmat::ptr_t, form)
+	(std::string, name)
+	(std::string, file)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+	pmat::sv_array,
+	(uint64_t, count)
+	(uint8_t, flags)
+	(std::vector<pmat::ptr_t>, elements)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+	pmat::sv_io,
+	(pmat::ptr_t, top)
+	(pmat::ptr_t, format)
+	(pmat::ptr_t, bottom)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+	pmat::sv_lvalue,
+	(uint8_t, type)
+	(pmat::uint, offset)
+	(pmat::uint, length)
+	(pmat::ptr_t, target)
 )
 
 BOOST_FUSION_DEFINE_STRUCT(
@@ -229,43 +365,6 @@ BOOST_FUSION_DEFINE_STRUCT(
 	(pmat::ptr_t, padlist)
 	(pmat::ptr_t, constval)
 	(std::string, file)
-)
-
-BOOST_FUSION_DEFINE_STRUCT(
-	(pmat), sv_glob,
-	(uint64_t, line)
-	(pmat::ptr_t, stash)
-	(pmat::ptr_t, scalar)
-	(pmat::ptr_t, array)
-	(pmat::ptr_t, hash)
-	(pmat::ptr_t, code)
-	(pmat::ptr_t, egv)
-	(pmat::ptr_t, io)
-	(pmat::ptr_t, form)
-	(std::string, name)
-	(std::string, file)
-)
-
-BOOST_FUSION_DEFINE_STRUCT(
-	(pmat), sv_array,
-	(uint64_t, count)
-	(uint8_t, flags)
-	(std::vector<pmat::ptr_t>, elements)
-)
-
-BOOST_FUSION_DEFINE_STRUCT(
-	(pmat), sv_io,
-	(pmat::ptr_t, top)
-	(pmat::ptr_t, format)
-	(pmat::ptr_t, bottom)
-)
-
-BOOST_FUSION_DEFINE_STRUCT(
-	(pmat), sv_lvalue,
-	(uint8_t, type)
-	(pmat::uint, offset)
-	(pmat::uint, length)
-	(pmat::ptr_t, target)
 )
 
 	/*
