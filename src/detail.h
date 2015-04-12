@@ -573,16 +573,11 @@ public:
     }
 };
 
-/*
-template<typename T>
-T read(asio::const_buffer b) {
-	reader r(std::move(b));
-	T res;
-	fusion::for_each(res, r);
-	return res;
-}
-*/
-
+/**
+ * When reading, we provide the base object and the state structure.
+ * The base object is the one we're populating - header, roots, stack etc.
+ * - and the state object acts as a manager for the updates to internal state.
+ */
 template<typename T>
 std::pair<T, asio::const_buffer> read(asio::const_buffer b, pmat::state_t &s)
 {
@@ -591,17 +586,6 @@ std::pair<T, asio::const_buffer> read(asio::const_buffer b, pmat::state_t &s)
 	(r)(res);
 	return std::make_pair(res, r.buf_);
 }
-
-/*
-template<typename T>
-auto read(asio::const_buffer b, pmat::state_t &s) ->
-    typename std::enable_if<boost::fusion::traits::is_sequence<T>::value>::type {
-	auto r = reader { std::move(b), s };
-	T res;
-	fusion::for_each(res, r);
-	return std::make_pair(res, r.buf_);
-}
-*/
 
 }
 
