@@ -308,6 +308,54 @@ public:
 				}
 				break;
 			}
+			case pmat::sv_type_t::SVtHASH: {
+				DEBUG << "Hash time";
+				pmat::sv_hash hash;
+				(*this)(hash.count);
+				(*this)(hash.backrefs);
+				std::map<std::string, pmat::ptr_t> out;
+				DEBUG << "Has " << (int)hash.count << " key/value pairs";
+				for(int i = 0; i < hash.count; ++i) {
+					std::string k;
+					pmat::ptr_t ptr;
+					(*this)(k);
+					(*this)(ptr);
+					out[k] = ptr;
+					DEBUG << " key " << k << " == " << (void *) ptr;
+				}
+				break;
+			}
+			case pmat::sv_type_t::SVtSTASH: {
+				DEBUG << "Stash time";
+				pmat::sv_stash stash;
+				(*this)(stash.count);
+				(*this)(stash.backrefs);
+				(*this)(stash.mro_linear_all);
+				(*this)(stash.mro_linear_current);
+				(*this)(stash.mro_nextmethod);
+				(*this)(stash.mro_isa);
+				(*this)(stash.name);
+				std::map<std::string, pmat::ptr_t> out;
+				DEBUG << stash.name << " has " << (int)stash.count << " key/value pairs";
+				for(int i = 0; i < stash.count; ++i) {
+					std::string k;
+					pmat::ptr_t ptr;
+					(*this)(k);
+					(*this)(ptr);
+					out[k] = ptr;
+					DEBUG << " key " << k << " == " << (void *) ptr;
+				}
+				break;
+			}
+			case pmat::sv_type_t::SVtREF: {
+				DEBUG << "REF time";
+				pmat::sv_ref ref;
+				(*this)(ref);
+				if(ref.flags & 1) {
+					DEBUG << "This ref is weak";
+				}
+				break;
+			}
 			case pmat::sv_type_t::SVtCODE: {
 				DEBUG << "We have code";
 				pmat::sv_code code;

@@ -2,6 +2,7 @@
 #define PMAT_H
 
 #include <vector>
+#include <map>
 #include <boost/fusion/include/define_struct.hpp>
 
 #include "BitField.h"
@@ -12,6 +13,8 @@ namespace pmat {
 	using null_byte_t = std::integral_constant<uint8_t, 0x00>;
 	using ptr_t = void *;
 
+	using uint = std::uint64_t;
+
 	template<typename U, typename T>
 	class vec : public std::vector<T> {
 	public:
@@ -20,6 +23,8 @@ namespace pmat {
 		U count;
 		std::vector<T> items;
 	};
+
+	using hash_elem_t = std::map<std::string, pmat::ptr_t>;
 
 	union flags_t {
 		uint8_t data;
@@ -161,6 +166,32 @@ BOOST_FUSION_DEFINE_STRUCT(
 )
 
 BOOST_FUSION_DEFINE_STRUCT(
+	(pmat), sv_hash,
+	(pmat::uint, count)
+	(pmat::ptr_t, backrefs)
+	(pmat::hash_elem_t, elements)
+)
+
+BOOST_FUSION_DEFINE_STRUCT(
+	(pmat), sv_stash,
+	(pmat::uint, count)
+	(pmat::ptr_t, backrefs)
+	(pmat::ptr_t, mro_linear_all)
+	(pmat::ptr_t, mro_linear_current)
+	(pmat::ptr_t, mro_nextmethod)
+	(pmat::ptr_t, mro_isa)
+	(std::string, name)
+	(pmat::hash_elem_t, elements)
+)
+
+BOOST_FUSION_DEFINE_STRUCT(
+	(pmat), sv_ref,
+	(uint8_t, flags)
+	(pmat::ptr_t, rv)
+	(pmat::ptr_t, ourstash)
+)
+
+BOOST_FUSION_DEFINE_STRUCT(
 	(pmat), sv_code_constsv,
 	(pmat::ptr_t, target_sv)
 )
@@ -231,8 +262,8 @@ BOOST_FUSION_DEFINE_STRUCT(
 BOOST_FUSION_DEFINE_STRUCT(
 	(pmat), sv_lvalue,
 	(uint8_t, type)
-	(uint, offset)
-	(uint, length)
+	(pmat::uint, offset)
+	(pmat::uint, length)
 	(pmat::ptr_t, target)
 )
 
