@@ -52,14 +52,28 @@ namespace detail {
 class reader {
 public:
     mutable asio::const_buffer buf_;
+    mutable size_t offset_;
+	mutable pmat::state_t pmat_state_;
+
     // mutable boost::optional<example::opt_fields::bits_type> opts_;
 
     explicit reader(
 		asio::const_buffer buf
-	):buf_(std::move(buf))
+	):buf_{std::move(buf)},
+	  offset_{0}
     {
 	}
 
+	void forward(size_t v) const { buf_ = buf_ + v; offset_ += v; DEBUG << "Forward " << v << " - offset now " << offset_; }
+
+    void operator()(double &val) const {
+        val = *asio::buffer_cast<double const*>(buf_);
+        forward(sizeof(double const *));
+    }
+    void operator()(float &val) const {
+        val = *asio::buffer_cast<float const*>(buf_);
+        forward(sizeof(float const*));
+    }
 	/**
 	 * Deal with numeric types. We assume everything needs an endian flip, and let the ntoh
 	 * templating sort out the details.
