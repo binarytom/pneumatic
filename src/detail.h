@@ -41,7 +41,6 @@ struct debug_type
 
 /* Reader/writer support *******************************************************************/
 
-#if(1)
 namespace asio = boost::asio;
 namespace fusion = boost::fusion;
 namespace detail {
@@ -49,22 +48,37 @@ namespace detail {
     namespace bs = boost::system;
 	bs::system_error bad_message();
 
+/*
+ * The reader class is responsible for pulling data from the buffer and mapping it to the
+ * appropriate types based on the Fusion definitions.
+ *
+ * Most methods will be called on a const reference, so we treat the following operations
+ * as mutable (acceptable-on-const):
+ *
+ * * Buffer offset changes
+ * * PMAT state changes
+ * 
+ */
 class reader {
 public:
     mutable asio::const_buffer buf_;
     mutable size_t offset_;
 	mutable pmat::state_t pmat_state_;
 
-    // mutable boost::optional<example::opt_fields::bits_type> opts_;
-
     explicit reader(
 		asio::const_buffer buf
 	):buf_{std::move(buf)},
-	  offset_{0}
+	  offset_{0},
+	  pmat_state_{}
     {
 	}
 
-	void forward(size_t v) const { buf_ = buf_ + v; offset_ += v; DEBUG << "Forward " << v << " - offset now " << offset_; }
+	/** Move buffer offset forward - we don't update the buffer directly, but let this method do it for us */
+	void forward(size_t v) const {
+		buf_ = buf_ + v;
+		offset_ += v;
+		DEBUG << "Forward " << v << " - offset now " << offset_;
+	}
 
     void operator()(double &val) const {
         val = *asio::buffer_cast<double const*>(buf_);
@@ -74,6 +88,7 @@ public:
         val = *asio::buffer_cast<float const*>(buf_);
         forward(sizeof(float const*));
     }
+
 	/**
 	 * Deal with numeric types. We assume everything needs an endian flip, and let the ntoh
 	 * templating sort out the details.
@@ -81,7 +96,6 @@ public:
     template<class T>
     auto operator()(T & val) const ->
         typename std::enable_if<std::is_integral<T>::value>::type {
-        // val = net::ntoh(*asio::buffer_cast<T const*>(buf_));
         val = *asio::buffer_cast<T const*>(buf_);
 // DEBUG << " Working with numeric value " << val;
         forward(sizeof(T));
@@ -211,7 +225,16 @@ public:
         }
     }
 
-    void operator()(pmat::sv& val) const {
+	/**
+	 * Reading an entire SV is mildly complicated.
+	 *
+	 * We have a "magic" type which is handled differently - more on that later.
+	 * Other types have a two-level size+count lookup:
+	 * * Standard SV fields
+	 * * Type-specific fields
+	 */
+    void
+	operator()(pmat::sv& val) const {
 		DEBUG << "We have an SV";
 		pmat::sv v;
 		(*this)(v.type);
@@ -460,7 +483,6 @@ public:
 		DEBUG << DEBUG_TYPE((T)) << " - iteration";
         boost::fusion::for_each(val, *this);
     }
-
 };
 
 /*
@@ -482,6 +504,5 @@ std::pair<T, asio::const_buffer> read(asio::const_buffer b) {
 }
 
 }
-#endif
 
 #endif

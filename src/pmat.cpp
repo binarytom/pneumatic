@@ -7,49 +7,65 @@
  * $Id$
  */
 
+#include <string>
+#include <unordered_map>
 
-std::string main_cv() const { return u8"the main code"; }
-std::string defstash() const { return u8"the default stash"; }
-std::string mainstack() const { return u8"the main stack AV"; }
-std::string beginav() const { return u8"the BEGIN list"; }
-std::string checkav() const { return u8"the CHECK list"; }
-std::string unitcheckav() const { return u8"the UNITCHECK list"; }
-std::string initav() const { return u8"the INIT list"; }
-std::string endav() const { return u8"the END list"; }
-std::string strtab() const { return u8"the shared string table HV"; }
-std::string envgv() const { return u8"the ENV GV"; }
-std::string incgv() const { return u8"the INC GV"; }
-std::string statgv() const { return u8"the stat GV"; }
-std::string statname() const { return u8"the statname SV"; }
-std::string tmpsv() const { return u8"the temporary SV"; }
-std::string defgv() const { return u8"the default GV"; }
-std::string argvgv() const { return u8"the ARGV GV"; }
-std::string argoutgv() const { return u8"the argvout GV"; }
-std::string argvout_stack() const { return u8"the argout stack AV"; }
-std::string fdpidav() const { return u8"the FD-to-PID mapping AV"; }
-std::string preambleav() const { return u8"the compiler preamble AV"; }
-std::string modglobalhv() const { return u8"the module data globals HV"; }
-std::string regex_padav() const { return u8"the REGEXP pad AV"; }
-std::string sortstash() const { return u8"the sort stash"; }
-std::string firstgv() const { return u8"the *a GV"; }
-std::string secondgv() const { return u8"the *b GV"; }
-std::string debstash() const { return u8"the debugger stash"; }
-std::string stashcache() const { return u8"the stash cache"; }
-std::string isarev() const { return u8"the reverse map of @ISA dependencies"; }
-std::string registered_mros() const { return u8"the registered MROs HV"; }
-std::string rs() const { return u8"the IRS"; }
-std::string last_in_gv() const { return u8"the last input GV"; }
-std::string ofsgv() const { return u8"the OFS GV"; }
-std::string defoutgv() const { return u8"the default output GV"; }
-std::string hintgv() const { return u8"the hints (%^H) GV"; }
-std::string patchlevel() const { return u8"the patch level"; }
-std::string apiversion() const { return u8"the API version"; }
-std::string e_script() const { return u8"the '-e' script"; }
-std::string mess_sv() const { return u8"the message SV"; }
-std::string ors_sv() const { return u8"the ORS SV"; }
-std::string encoding() const { return u8"the encoding"; }
-std::string blockhooks() const { return u8"the block hooks"; }
-std::string custom_ops() const { return u8"the custom ops HV"; }
-std::string custom_op_names() const { return u8"the custom op names HV"; }
-std::string custom_op_descs() const { return u8"the custom op descriptions HV"; }
+class Lookup {
+public:
+	Lookup();
+
+	std::string root_desc(const std::string &name) const { return root_.at(name); }
+
+private:
+	std::unordered_map<std::string, std::string> root_;
+};
+
+Lookup::Lookup(
+):root_{ }
+{
+	root_["main_cv"] = u8"the main code";
+	root_["defstash"] = u8"the default stash";
+	root_["mainstack"] = u8"the main stack AV";
+	root_["beginav"] = u8"the BEGIN list";
+	root_["checkav"] = u8"the CHECK list";
+	root_["unitcheckav"] = u8"the UNITCHECK list";
+	root_["initav"] = u8"the INIT list";
+	root_["endav"] = u8"the END list";
+	root_["strtab"] = u8"the shared string table HV";
+	root_["envgv"] = u8"the ENV GV";
+	root_["incgv"] = u8"the INC GV";
+	root_["statgv"] = u8"the stat GV";
+	root_["statname"] = u8"the statname SV";
+	root_["tmpsv"] = u8"the temporary SV";
+	root_["defgv"] = u8"the default GV";
+	root_["argvgv"] = u8"the ARGV GV";
+	root_["argoutgv"] = u8"the argvout GV";
+	root_["argvout_stack"] = u8"the argout stack AV";
+	root_["fdpidav"] = u8"the FD-to-PID mapping AV";
+	root_["preambleav"] = u8"the compiler preamble AV";
+	root_["modglobalhv"] = u8"the module data globals HV";
+	root_["regex_padav"] = u8"the REGEXP pad AV";
+	root_["sortstash"] = u8"the sort stash";
+	root_["firstgv"] = u8"the *a GV";
+	root_["secondgv"] = u8"the *b GV";
+	root_["debstash"] = u8"the debugger stash";
+	root_["stashcache"] = u8"the stash cache";
+	root_["isarev"] = u8"the reverse map of @ISA dependencies";
+	root_["registered_mros"] = u8"the registered MROs HV";
+	root_["rs"] = u8"the IRS";
+	root_["last_in_gv"] = u8"the last input GV";
+	root_["ofsgv"] = u8"the OFS GV";
+	root_["defoutgv"] = u8"the default output GV";
+	root_["hintgv"] = u8"the hints (%^H) GV";
+	root_["patchlevel"] = u8"the patch level";
+	root_["apiversion"] = u8"the API version";
+	root_["e_script"] = u8"the '-e' script";
+	root_["mess_sv"] = u8"the message SV";
+	root_["ors_sv"] = u8"the ORS SV";
+	root_["encoding"] = u8"the encoding";
+	root_["blockhooks"] = u8"the block hooks";
+	root_["custom_ops"] = u8"the custom ops HV";
+	root_["custom_op_names"] = u8"the custom op names HV";
+	root_["custom_op_descs"] = u8"the custom op descriptions HV";
+}
 
