@@ -67,19 +67,25 @@ namespace pmat {
 		SVtHASH, // 5
 		SVtSTASH, // 6
 		SVtCODE, // 7
+		SVtIO, // 8
+		SVtLVALUE, // 9
+		SVtREGEXP, // 10
+		SVtFORMAT, // 11
+		SVtINVLIST, // 12
 		SVtMAGIC = 0x80,
 		SVtUNKNOWN = 0xFF
 	};
+
 	enum class sv_code_type_t : std::uint8_t {
 		SVCtEND = 0,
-	  SVCtCONSTSV = 1,
-	  SVCtCONSTIX,
-	  SVCtGVSV,
-	  SVCtGVIX,
-	  SVCtPADNAME = 5,
-	  SVCtPADSV = 6,
-	  SVCtPADNAMES = 7,
-	  SVCtPAD
+		SVCtCONSTSV = 1,
+		SVCtCONSTIX,
+		SVCtGVSV,
+		SVCtGVIX,
+		SVCtPADNAME = 5,
+		SVCtPADSV = 6,
+		SVCtPADNAMES = 7,
+		SVCtPAD
 	};
 
 	enum class sv_ctx_type_t : std::uint8_t {
@@ -214,6 +220,37 @@ BOOST_FUSION_DEFINE_STRUCT(
 	(uint8_t, flags)
 	(std::vector<pmat::ptr_t>, elements)
 )
+
+BOOST_FUSION_DEFINE_STRUCT(
+	(pmat), sv_io,
+	(pmat::ptr_t, top)
+	(pmat::ptr_t, format)
+	(pmat::ptr_t, bottom)
+)
+
+BOOST_FUSION_DEFINE_STRUCT(
+	(pmat), sv_lvalue,
+	(uint8_t, type)
+	(uint, offset)
+	(uint, length)
+	(pmat::ptr_t, target)
+)
+
+	/*
+BOOST_FUSION_DEFINE_STRUCT(
+	(pmat), sv_invlist,
+)
+*/
+
+	/*
+BOOST_FUSION_DEFINE_STRUCT(
+	(pmat), sv_re,
+)
+
+BOOST_FUSION_DEFINE_STRUCT(
+	(pmat), sv_format,
+)
+*/
 
 BOOST_FUSION_DEFINE_STRUCT(
 	(pmat), heap,

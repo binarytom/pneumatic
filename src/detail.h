@@ -371,6 +371,42 @@ public:
 				}
 				break;
 			}
+			case pmat::sv_type_t::SVtIO: {
+				DEBUG << "IO";
+				pmat::sv_io io;
+				(*this)(io);
+				break;
+			}
+			case pmat::sv_type_t::SVtLVALUE: {
+				DEBUG << "LVALUE";
+				pmat::sv_lvalue lv;
+				(*this)(lv);
+				break;
+			}
+			case pmat::sv_type_t::SVtREGEXP: {
+				DEBUG << "Regexp";
+				/*
+				pmat::sv_re re;
+				(*this)(re);
+				*/
+				break;
+			}
+			case pmat::sv_type_t::SVtFORMAT: {
+				DEBUG << "Format";
+				/*
+				pmat::sv_format format;
+				(*this)(format);
+				*/
+				break;
+			}
+			case pmat::sv_type_t::SVtINVLIST: {
+				DEBUG << "Invlist";
+				/*
+				pmat::sv_invlist invlist;
+				(*this)(invlist);
+				*/
+				break;
+			}
 			case pmat::sv_type_t::SVtUNKNOWN: {
 				DEBUG << "Unknown type, skipping by size field " << v.size;
 				break;
