@@ -1,25 +1,48 @@
 #include <iostream>
 #include <fstream>
 #include <boost/asio/buffer.hpp>
+#include <boost/iostreams/device/mapped_file.hpp>
 
 #include "detail.h"
 #include "Log.h"
 
 using namespace std;
 
-int main(void) {
+int main(int argc, char **argv) {
 	DEBUG << "Starting parser";
 
-	ifstream is;
-	is.open("sample.pmat", ios::binary);
-	char *data = new char[256 * 1024];
-	while(is) {
-		is.read(data, 256 * 1023);
-		auto len = is.gcount();
+	std::string filename { "sample.pmat" };
+	if(argc > 1) {
+		DEBUG << " argc = " << (int)argc;
+		for(int i = 0; i < argc; ++i) {
+			auto s = std::string { argv[i] };
+			DEBUG << i << " - " << s;
+			filename = s;
+		}
+	}	
+	size_t bytes;
+	{ // Work out how much we need to map
+		ifstream file(filename, ios::binary | ios::ate);
+		bytes = file.tellg();
+	}
 
+	// Map entire file
+	boost::iostreams::mapped_file_source file;
+	file.open(filename, bytes);
+	if(!file.is_open()) {
+		ERROR << "Could not mmap() the file";
+		exit(-1);
+	}
+
+	const char *data = file.data();
+	//while(is) {
+		auto len = bytes;
+
+		pmat::state_t pm;
 		pmat::header fr;
 		asio::const_buffer remainder;
-		std::tie(fr, remainder) = detail::read<pmat::header>(asio::buffer(data, len));
+		std::tie(fr, remainder) = detail::read<pmat::header>(asio::buffer(data, len), pm);
+		DEBUG << "PMAT state now has " << pm.types.size() << " types - " << (void *)(&pm);
 		DEBUG << "Magic: " << fr.magic;
 		DEBUG << "Flags:";
 		DEBUG << " * Big-endian:  " << (fr.flags.big_endian ? "yes" : "no");
@@ -32,7 +55,17 @@ int main(void) {
 		int ver = (uint16_t) ((pv >>  8) & 0xFFFF);
 		int sub = (uint16_t) ((pv >> 24) & 0xFFFF);
 		DEBUG << "PMAT format " << to_string(fr.major_ver) << "." << to_string(fr.minor_ver) << " generated on Perl " << to_string(rev) << "." << to_string(ver) << "." << to_string(sub);
-	}
+
+		DEBUG << "Roots:";
+		pmat::roots roots;
+		std::tie(roots, remainder) = detail::read<pmat::roots>(remainder, pm);
+		DEBUG << "Stack:";
+		pmat::stack stack;
+		std::tie(stack, remainder) = detail::read<pmat::stack>(remainder, pm);
+		DEBUG << "Heap:";
+		pmat::heap heap;
+		std::tie(heap, remainder) = detail::read<pmat::heap>(remainder, pm);
+	//}
 	DEBUG << "Done";
 	return 0;
 }
