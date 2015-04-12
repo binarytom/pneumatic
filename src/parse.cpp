@@ -65,6 +65,8 @@ int main(int argc, char **argv) {
 		DEBUG << "Heap:";
 		pmat::heap heap;
 		std::tie(heap, remainder) = detail::read<pmat::heap>(remainder, pm);
+
+		pm.finish();
 	//}
 	DEBUG << "Done";
 	return 0;
