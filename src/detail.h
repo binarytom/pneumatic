@@ -71,16 +71,22 @@ public:
 		asio::const_buffer buf,
 		pmat::state_t &state
 	):buf_{std::move(buf)},
-	  offset_{0},
+	  offset_{state.file_offset()},
 	  pmat_state_(state)
     {
+	}
+
+virtual ~reader()
+	{
+		DEBUG << "Finish reader, offset was " << offset_;
+		pmat_state_.add_file_offset(offset_);
 	}
 
 	/** Move buffer offset forward - we don't update the buffer directly, but let this method do it for us */
 	void forward(size_t v) const {
 		buf_ = buf_ + v;
 		offset_ += v;
-		// TRACE << "Forward " << v << " - offset now " << offset_;
+		TRACE << "Forward " << v << " - offset now " << offset_;
 	}
 
     void operator()(double &val) const {
@@ -248,7 +254,9 @@ public:
 			(*this)(m.obj);
 			(*this)(m.ptr);
 			TRACE << "Obj = " << (void *) m.obj << ", ptr = " << (void *) m.obj;
-			break;
+			// FIXME At this point, we want to look up the SV(s) and apply the magic.
+			val = v;
+			return;
 		}
 		default: {
 			TRACE << " Have " << pmat_state_.types.size() << " to choose from";
@@ -268,64 +276,69 @@ public:
 			(*this)(v.refcnt);
 			(*this)(v.size);
 			(*this)(v.blessed);
+			if(pmat_state_.have_sv_at(v.address)) {
+				ERROR << "We read an SV that already exists? " << (void *)v.address << " at offset " << offset_;
+			}
 
 			/* Specific */
 			switch(v.type) {
 			case pmat::sv_type_t::SVtSCALAR: {
 				TRACE << "This is a scalar";
-				pmat::sv_scalar scalar;
-				(*this)(scalar.flags);
-				if(scalar.flags & ~0x1f) {
-					ERROR << "Invalid flags " << (int)scalar.flags;
+				auto scalar = new pmat::sv_scalar { v };
+				(*this)(scalar->flags);
+				if(scalar->flags & ~0x1f) {
+					ERROR << "Invalid flags " << (int)scalar->flags;
 				}
-				TRACE << " flags (" << (int)scalar.flags << ") => " << (scalar.flags & 1 ? "has IV" : "no IV")
-					<< (scalar.flags & 2 ? ", IV is UV" : "")
-					<< (scalar.flags & 4 ? ", NV" : "")
-					<< (scalar.flags & 8 ? ", STR" : "")
-					<< (scalar.flags & 16 ? ", UTF8" : "");
-				(*this)(scalar.iv);
-				TRACE << "IV = " << scalar.iv;
-				(*this)(scalar.nv);
-				TRACE << "NV = " << scalar.nv;
-				(*this)(scalar.pvlen);
-				TRACE << "pvlen = " << scalar.pvlen;
-				(*this)(scalar.ourstash);
-				TRACE << "stash = " << (void *) scalar.ourstash;
-				//if(scalar.flags & 0x08) {
+				TRACE << " flags (" << (int)scalar->flags << ") => " << (scalar->flags & 1 ? "has IV" : "no IV")
+					<< (scalar->flags & 2 ? ", IV is UV" : "")
+					<< (scalar->flags & 4 ? ", NV" : "")
+					<< (scalar->flags & 8 ? ", STR" : "")
+					<< (scalar->flags & 16 ? ", UTF8" : "");
+				(*this)(scalar->iv);
+				TRACE << "IV = " << scalar->iv;
+				(*this)(scalar->nv);
+				TRACE << "NV = " << scalar->nv;
+				(*this)(scalar->pvlen);
+				TRACE << "pvlen = " << scalar->pvlen;
+				(*this)(scalar->ourstash);
+				TRACE << "stash = " << (void *) scalar->ourstash;
 				TRACE << "reading pv data";
-				(*this)(scalar.pv);
-				TRACE << "pv = " << scalar.pv;
-				//}
+				(*this)(scalar->pv);
+				TRACE << "pv = " << scalar->pv;
+				pmat_state_.add_sv(*scalar);
 				break;
 			}
 			case pmat::sv_type_t::SVtGLOB: {
 				TRACE << "This is a glob";
-				pmat::sv_glob glob;
-				(*this)(glob);
-				TRACE << " glob name " << glob.name << " from file " << std::string { glob.file };
+				auto glob = new pmat::sv_glob { v };
+				(*this)(*glob);
+				TRACE << " glob name " << glob->name << " from file " << std::string { glob->file };
+				pmat_state_.add_sv(*glob);
 				break;
 			}
 			case pmat::sv_type_t::SVtARRAY: {
 				TRACE << "This be array";
-				pmat::sv_array array;
-				(*this)(array.count);
-				(*this)(array.flags);
-				TRACE << " has " << array.count << " elements with flags " << (int) array.flags;
-				for(int i = 0; i < array.count; ++i) {
+				auto array = new pmat::sv_array { v };
+				(*this)(array->count);
+				(*this)(array->flags);
+				TRACE << " has " << array->count << " elements with flags " << (int) array->flags;
+				for(int i = 0; i < array->count; ++i) {
 					pmat::ptr_t ptr;
 					(*this)(ptr);
-					array.elements.emplace_back(ptr);
+					array->elements.emplace_back(ptr);
 				}
+				assert(array->count == array->elements.size());
+				pmat_state_.add_sv(*array);
 				break;
 			}
 			case pmat::sv_type_t::SVtHASH: {
 				TRACE << "Hash time";
-				pmat::sv_hash hash;
-				(*this)(hash.count);
-				(*this)(hash.backrefs);
+				auto hash = new pmat::sv_hash { v };
+				(*this)(hash->count);
+				(*this)(hash->backrefs);
 				std::map<std::string, pmat::ptr_t> out;
-				TRACE << "Has " << (int)hash.count << " key/value pairs";
-				for(int i = 0; i < hash.count; ++i) {
+				TRACE << "Has " << (int)hash->count << " key/value pairs";
+				for(int i = 0; i < hash->count; ++i) {
 					std::string k;
 					pmat::ptr_t ptr;
 					(*this)(k);
@@ -333,21 +346,23 @@ public:
 					out[k] = ptr;
 					TRACE << " key " << k << " == " << (void *) ptr;
 				}
+				pmat_state_.add_sv(*hash);
 				break;
 			}
 			case pmat::sv_type_t::SVtSTASH: {
 				TRACE << "Stash time";
-				pmat::sv_stash stash;
-				(*this)(stash.count);
-				(*this)(stash.backrefs);
-				(*this)(stash.mro_linear_all);
-				(*this)(stash.mro_linear_current);
-				(*this)(stash.mro_nextmethod);
-				(*this)(stash.mro_isa);
-				(*this)(stash.name);
+				auto stash = new pmat::sv_stash { v };
+				(*this)(stash->count);
+				(*this)(stash->backrefs);
+				(*this)(stash->mro_linear_all);
+				(*this)(stash->mro_linear_current);
+				(*this)(stash->mro_nextmethod);
+				(*this)(stash->mro_isa);
+				(*this)(stash->name);
+				// if(stash->name == "main");
 				std::map<std::string, pmat::ptr_t> out;
-				TRACE << stash.name << " has " << (int)stash.count << " key/value pairs";
-				for(int i = 0; i < stash.count; ++i) {
+				DEBUG << "Stash [" << stash->name << "] " << " at offset " << offset_ << " has " << (int)stash->count << " key/value pairs, count = " << (int)(stash->count) << " backrefs " << (void *)stash->backrefs << " isa " << (void *)stash->mro_isa;
+				for(int i = 0; i < stash->count; ++i) {
 					std::string k;
 					pmat::ptr_t ptr;
 					(*this)(k);
@@ -355,106 +370,102 @@ public:
 					out[k] = ptr;
 					TRACE << " key " << k << " == " << (void *) ptr;
 				}
+				pmat_state_.add_sv(*stash);
 				break;
 			}
 			case pmat::sv_type_t::SVtREF: {
 				TRACE << "REF time";
-				pmat::sv_ref ref;
-				(*this)(ref);
-				if(ref.flags & 1) {
+				auto ref = new pmat::sv_ref { v };
+				(*this)(*ref);
+				if(ref->flags & 1) {
 					TRACE << "This ref is weak";
 				}
+				pmat_state_.add_sv(*ref);
 				break;
 			}
 			case pmat::sv_type_t::SVtCODE: {
 				TRACE << "We have code";
-				pmat::sv_code code;
-				(*this)(code.line);
-				(*this)(code.flags);
-				TRACE << " has " << code.line << " with flags " << (int) code.flags;
-				(*this)(code.op_root);
-				(*this)(code.stash);
-				(*this)(code.glob);
-				(*this)(code.outside);
-				(*this)(code.padlist);
-				(*this)(code.constval);
-				(*this)(code.file);
-				TRACE << " file " << code.file;
+				auto code = new pmat::sv_code { v };
+				(*this)(code->line);
+				(*this)(code->flags);
+				TRACE << " has " << code->line << " with flags " << (int) code->flags;
+				(*this)(code->op_root);
+				(*this)(code->stash);
+				(*this)(code->glob);
+				(*this)(code->outside);
+				(*this)(code->padlist);
+				(*this)(code->constval);
+				(*this)(code->file);
+				TRACE << " file " << code->file;
 				pmat::sv_code_type_t type;
 				(*this)(type);
 				while(type != pmat::sv_code_type_t::SVCtEND) {
-					TRACE << "Type is " << (int)type;
+					DEBUG << "Type is " << (int)type;
 					switch(type) {
 					case pmat::sv_code_type_t::SVCtCONSTSV: {
-						pmat::sv_code_constsv constsv;
-						(*this)(constsv);
-						TRACE << "Had constsv " << (void*)constsv.target_sv;
+						(*this)(code->constsv_);
+						TRACE << "Had constsv " << (void*)code->constsv_;
 						break;
 					}
 					case pmat::sv_code_type_t::SVCtCONSTIX: {
-						pmat::sv_code_constix constix;
-						(*this)(constix);
-						TRACE << "Had constsv " << constix.padix;
+						(*this)(code->constix_);
+						TRACE << "Had constix " << code->constix_;
 						break;
 					}
 					case pmat::sv_code_type_t::SVCtGVSV: {
-						pmat::sv_code_gvsv gvsv;
-						(*this)(gvsv);
-						TRACE << "Had GVSV " << (void *)gvsv.target_sv;
+						(*this)(code->gvsv_);
+						TRACE << "Had GVSV " << (void *)code->gvsv_;
 						break;
 					}
 					case pmat::sv_code_type_t::SVCtGVIX: {
-						pmat::sv_code_gvix gvix;
-						(*this)(gvix);
-						TRACE << "Had GVIX " << gvix.padix;
+						(*this)(code->gvix_);
+						TRACE << "Had GVIX " << code->gvix_;
 						break;
 					}
 					case pmat::sv_code_type_t::SVCtPADNAMES: {
-						pmat::sv_code_padnames padnames;
-						(*this)(padnames);
-						TRACE << "Had padnames " << (void *)padnames.names;
+						(*this)(code->padnames_);
+						TRACE << "Had padnames " << (void *)code->padnames_;
 						break;
 					}
 					case pmat::sv_code_type_t::SVCtPAD: {
-						pmat::sv_code_pad pad;
-						(*this)(pad);
-						TRACE << "Had depth " << pad.depth << " pad " << pad.pad;
+						auto cp = pmat::sv_code_pad { };
+						(*this)(cp);
+						DEBUG << "Had depth " << cp.depth << " pad " << (void *)cp.pad;
+						if(cp.depth >= code->pads_.size()) code->pads_.resize(cp.depth + 1);
+						code->pads_[cp.depth] = cp.pad; // .emplace_back(cp);
 						break;
 					}
 					default: ERROR << "unknwon thing";
 					}
-									// SVCtPADNAME = 5,
-									// SVCtPADSV = 6,
 					(*this)(type);
 				}
+				pmat_state_.add_sv(*code);
 				break;
 			}
 			case pmat::sv_type_t::SVtIO: {
 				TRACE << "IO";
-				pmat::sv_io io;
-				(*this)(io);
+				auto io = new pmat::sv_io { v };
+				(*this)(*io);
+				pmat_state_.add_sv(*io);
 				break;
 			}
 			case pmat::sv_type_t::SVtLVALUE: {
 				TRACE << "LVALUE";
-				pmat::sv_lvalue lv;
-				(*this)(lv);
+				auto lv = new pmat::sv_lvalue { v };
+				(*this)(*lv);
+				pmat_state_.add_sv(*lv);
 				break;
 			}
 			case pmat::sv_type_t::SVtREGEXP: {
 				TRACE << "Regexp";
-				/*
-				pmat::sv_re re;
-				(*this)(re);
-				*/
+				auto re = new pmat::sv_regexp { v };
+				pmat_state_.add_sv(*re);
 				break;
 			}
 			case pmat::sv_type_t::SVtFORMAT: {
 				TRACE << "Format";
-				/*
-				pmat::sv_format format;
-				(*this)(format);
-				*/
+				auto form = new pmat::sv_format { v };
+				pmat_state_.add_sv(*form);
 				break;
 			}
 			case pmat::sv_type_t::SVtINVLIST: {
@@ -467,6 +478,7 @@ public:
 			}
 			case pmat::sv_type_t::SVtUNKNOWN: {
 				TRACE << "Unknown type, skipping by size field " << v.size;
+				// pmat_state_.add_sv(v);
 				break;
 			}
 			default:
@@ -483,13 +495,13 @@ public:
 					std::string str;
 					(*this)(str);
 				}
+				// pmat_state_.add_sv(v);
 				break;
 			}
 			break;
 		}
 		}
 		val = v;
-		pmat_state_.add_sv(v);
 	}
 
     void operator()(pmat::type& v) const {
