@@ -539,16 +539,15 @@ namespace pmat {
 				width[1] = nmax(width[1], std::to_string(it.second.count).size());
 				width[2] = nmax(width[2], std::to_string(it.second.size).size());
 			}
-			for(auto &i : width) { ++i; }
 			DEBUG << "width 0 " << width[0];
 			DEBUG << "width 1 " << width[1];
 			DEBUG << "width 2 " << width[2];
 			{
 				boost::io::ios_all_saver ias { std::cout };
 				std::cout << std::setw(width[0]) << std::setiosflags(std::ios::left) << std::setfill(' ') << "Type";
-				std::cout << std::setw(0) << "| ";
+				std::cout << std::setw(0) << " | ";
 				std::cout << std::setw(width[1]) << std::setiosflags(std::ios::left) << std::setfill(' ') << "SVs";
-				std::cout << std::setw(0) << "| ";
+				std::cout << std::setw(0) << " | ";
 				std::cout << std::setw(width[2]) << std::setiosflags(std::ios::left) << std::setfill(' ') << "Bytes";
 				std::cout << std::endl;
 			}
@@ -560,9 +559,9 @@ namespace pmat {
 				}
 				{
 					boost::io::ios_all_saver ias { std::cout };
-					std::cout << std::setw(0) << "| ";
+					std::cout << std::setw(0) << " | ";
 					std::cout << std::setw(width[1]) << std::setfill(' ') << it.second.count;
-					std::cout << std::setw(0) << "| ";
+					std::cout << std::setw(0) << " | ";
 					std::cout << std::setw(width[2]) << std::setfill(' ') << it.second.size;
 					std::cout << std::endl;
 				}
