@@ -90,11 +90,11 @@ virtual ~reader()
 
     void operator()(double &val) const {
         val = *asio::buffer_cast<double const*>(buf_);
-        forward(sizeof(double const *));
+        forward(sizeof(double));
     }
     void operator()(float &val) const {
         val = *asio::buffer_cast<float const*>(buf_);
-        forward(sizeof(float const*));
+        forward(sizeof(float));
     }
 
 	/**
