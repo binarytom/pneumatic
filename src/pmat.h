@@ -183,6 +183,11 @@ namespace pmat {
 	std::string to_string( const pmat::ptr_t &ptr);
 	std::string to_string( const pmat::sv &sv);
 
+	class sv_invlist:public sv {
+	public:
+		sv_invlist() { }
+		sv_invlist(const sv &v):sv{v} { }
+	};
 	class sv_scalar:public sv {
 	public:
 		uint8_t flags;

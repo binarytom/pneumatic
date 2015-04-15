@@ -473,10 +473,8 @@ virtual ~reader()
 			}
 			case pmat::sv_type_t::SVtINVLIST: {
 				TRACE << "Invlist";
-				/*
-				pmat::sv_invlist invlist;
-				(*this)(invlist);
-				*/
+				auto invlist = new pmat::sv_invlist { v };
+				pmat_state_.add_sv(*invlist);
 				break;
 			}
 			case pmat::sv_type_t::SVtUNKNOWN: {
