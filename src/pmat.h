@@ -1,10 +1,10 @@
-#ifndef PMAT_H
-#define PMAT_H
+#pragma once
 
 #include <vector>
 #include <map>
 #include <boost/fusion/include/define_struct.hpp>
 #include <boost/io/ios_state.hpp>
+#include <boost/format.hpp>
 #include <iostream>
 #include <iomanip>
 
@@ -772,7 +772,4 @@ namespace pmat {
 		size_t file_offset_;
 	};
 };
-
-
-#endif
 

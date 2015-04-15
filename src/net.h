@@ -1,5 +1,4 @@
-#ifndef NET_H
-#define NET_H
+#pragma once
 
 #include <arpa/inet.h>
 #include <endian.h>
@@ -24,5 +23,4 @@ char hton(char v);
 
 } // namespace net
 
-#endif
 

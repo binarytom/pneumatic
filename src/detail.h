@@ -1,5 +1,4 @@
-#ifndef DETAIL_H
-#define DETAIL_H
+#pragma once
 
 // for the reader/writer
 #include <boost/asio/buffer.hpp>
@@ -601,4 +600,3 @@ std::pair<T, asio::const_buffer> read(asio::const_buffer b, pmat::state_t &s)
 
 }
 
-#endif

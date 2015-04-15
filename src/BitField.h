@@ -1,6 +1,4 @@
-#ifndef BITFIELD_H_
-#define BITFIELD_H_
-
+#pragma once
 /* Mostly taken from http://blog.codef00.com/2014/12/06/portable-bitfields-using-c11/ */
 
 #include <cstdint>
@@ -89,6 +87,4 @@ public:
 private:
 	T value_;
 };
-
-#endif
 

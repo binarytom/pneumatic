@@ -1,9 +1,4 @@
-/**
- * @file Log.h
- *
- */
-#ifndef LOG_H
-#define LOG_H
+#pragma once
 
 #include <boost/log/trivial.hpp>
 
@@ -14,4 +9,3 @@
 #define ERROR BOOST_LOG_TRIVIAL(error)
 #define FATAL BOOST_LOG_TRIVIAL(fatal)
 
-#endif // LOG_H
