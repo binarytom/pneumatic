@@ -1,0 +1,49 @@
+PMAT state class holds information gathered from a .pmat dumpfile.
+
+A state delta represents the changes in state between two dumpfiles.
+Delta cannot be generated unless the metadata matches:
+
+* perl version
+* uint/nv size
+* threads
+* yes/no/undef SVs
+
+Delta detect patterns:
+
+things that are growing:
+
+* PV
+* Refcount
+* Array elements
+* Hash elements
+* Objects in heap
+* Count by blessed
+
+As we apply successive deltas, we should be able to identify patterns and warn about those.
+
+= Type-specific checks =
+
+Each of these can get special handling.
+
+== Future ==
+
+A leaf future has:
+
+* State - pending, cancelled, failed, done
+
+Convergent:
+
+* All components ->ready, but we aren't
+
+Sequenced:
+
+* All components ->ready, but we aren't
+
+== IO::Async::Notifier ==
+
+Use these to fill out our $loop trees
+
+== IO::Async::Stream ==
+
+Current buffer size - are we maintaining a huge buffer due to lack of waterlevel?
+
