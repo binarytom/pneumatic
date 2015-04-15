@@ -12,7 +12,7 @@
 using namespace std;
 
 int main(int argc, char **argv) {
-	{
+	if(false) {
 		namespace logging = boost::log;
 		logging::core::get()->set_filter(
 			/* phoenix template thingey, comparison is stored not the result */
