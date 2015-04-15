@@ -151,10 +151,10 @@ virtual ~reader()
 		}
 		TRACE << " String " << val;
 #else
-        uint64_t length = 0;
+		pmat::uint_t length = 0;
         (*this)(length);
 		// TRACE << " String length " << length;
-		if(-1l == (int64_t)length) {
+		if(0 == ~length) {
 			return;
 		}
 		val = std::string(asio::buffer_cast<char const*>(buf_), length);
@@ -168,14 +168,18 @@ virtual ~reader()
 		TRACE << "Applied flags: " << (uint32_t) val.data;
     }
 
+// A pointer is but a number as far as we are concerned.
+#if 0
     void operator()(pmat::ptr_t &val) const {
         uint64_t ptr = 0;
         (*this)(ptr);
+		val = ptr;
 		// ptr = net::hton(ptr);
 		// TRACE << " ptr = " << ptr;
-		val = reinterpret_cast<void *>(ptr);
+		// val = reinterpret_cast<void *>(ptr);
 		// TRACE << " val = " << val;
     }
+#endif
 
     template<class T>
     void operator()(std::vector<T>& val) const {
@@ -261,9 +265,9 @@ virtual ~reader()
 			TRACE << " Have " << pmat_state_.types.size() << " to choose from";
 			pmat::type base_type = pmat_state_.types[0];
 			pmat::type spec_type = pmat_state_.types[(int) v.type];
-			TRACE << "Scalar - will expect " << (uint32_t)base_type.headerlen << " bytes header, " << (uint32_t)base_type.nptrs << " pointers, " << (uint32_t)base_type.nstrs << " strings";
+			DEBUG << "Scalar - will expect " << (size_t)base_type.headerlen << " bytes header, " << (size_t)base_type.nptrs << " pointers, " << (size_t)base_type.nstrs << " strings";
 			const size_t total = (size_t)base_type.headerlen + sizeof(pmat::ptr_t) * (size_t)base_type.nptrs;
-			TRACE << " Calculated " << total << " bytes, plus " << (uint32_t)base_type.nstrs << " strings";
+			DEBUG << " Calculated " << total << " bytes, plus " << (uint32_t)base_type.nstrs << " strings";
 
 			/* so we now have information about the total size of the serialized SV data, isolate it into
 			 * a new const_buffer and work with that first

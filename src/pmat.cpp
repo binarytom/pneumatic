@@ -1,14 +1,6 @@
-/**
- * @file pmat.cpp
- * @author Tom Molesworth <tom@audioboundary.com>
- * @date 08/04/15 22:10:50
- *
- * 
- * $Id$
- */
-
 #include <string>
 #include <unordered_map>
+#include "pmat.h"
 
 class Lookup {
 public:
@@ -67,5 +59,21 @@ Lookup::Lookup(
 	root_["custom_ops"] = u8"the custom ops HV";
 	root_["custom_op_names"] = u8"the custom op names HV";
 	root_["custom_op_descs"] = u8"the custom op descriptions HV";
+}
+
+std::string pmat::to_string(
+	const pmat::ptr_t &ptr
+)
+{
+	using boost::format;
+	return (format("0x%08x") % (uint64_t)ptr).str();
+}
+
+std::string pmat::to_string(
+	const pmat::sv &sv
+)
+{
+	using boost::format;
+	return (format("SV at 0x%08x type %02x") % (uint64_t)sv.address % (int)sv.type).str();
 }
 

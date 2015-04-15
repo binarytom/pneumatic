@@ -15,9 +15,14 @@ namespace pmat {
 	/* PMAT magic */
 	using header_magic_t = std::integral_constant<uint32_t, 0x54414d50>;
 	using null_byte_t = std::integral_constant<uint8_t, 0x00>;
-	using ptr_t = void *;
 
-	using uint = std::uint64_t;
+	/* Actual size of int depends on perl build, but typically uint32/uint64 */
+	using uint_t = std::uint64_t;
+	/* Pointer also varies - we just assume 32/64 bit */
+	using ptr_t = std::uint64_t;
+	/* A hash provides string => value lookup, stick with pointers for now */
+	using hash_elem_t = std::map<std::string, pmat::ptr_t>;
+
 
 	template<typename U, typename T>
 	class vec : public std::vector<T> {
@@ -28,8 +33,7 @@ namespace pmat {
 		std::vector<T> items;
 	};
 
-	using hash_elem_t = std::map<std::string, pmat::ptr_t>;
-
+	/* PMAT top-level flags - these mostly identify details about the build */
 	union flags_t {
 		uint8_t data;
 
@@ -45,6 +49,7 @@ namespace pmat {
 		BitField<4, 1> threads;
 	};
 
+	/** Information about internal SV types, we don't use this anywhere yet */
 	typedef enum {
 		SVt_NULL,       /* 0 */
 		SVt_BIND,       /* 1 */
@@ -66,7 +71,12 @@ namespace pmat {
 		SVt_PVIO,       /* 15 */
 		SVt_LAST        /* keep last in enum. used to size arrays */
 	} svtype;
-	
+
+	/**
+	 * SV types - real and synthetic.
+	 * Some of these are not found in the .pmat source, but applied post-facto
+	 * during fixup.
+	 */
 	enum class sv_type_t : std::uint8_t {
 		SVtEND = 0,
 		SVtGLOB, // 1
@@ -90,6 +100,7 @@ namespace pmat {
 		SVtUNKNOWN = 0xFF
 	};
 
+	/** The information attached to coderef bodies */
 	enum class sv_code_type_t : std::uint8_t {
 		SVCtEND = 0,
 		SVCtCONSTSV = 1,
@@ -102,7 +113,9 @@ namespace pmat {
 		SVCtPAD
 	};
 
+	/** Context body types */
 	enum class sv_ctx_type_t : std::uint8_t {
+		PMAT_CTXtEND = 0,
 		PMAT_CTXtSUB = 1,
 		PMAT_CTXtTRY,
 		PMAT_CTXtEVAL,
@@ -137,7 +150,7 @@ namespace pmat {
 	using typevec16_t = pmat::vec<uint16_t, pmat::type>;
 	using typevec32_t = pmat::vec<uint32_t, pmat::type>;
 	using rootvec32_t = pmat::vec<uint32_t, pmat::root>;
-	using ptrvec_t = pmat::vec<::pmat::uint, pmat::ptr_t>;
+	using ptrvec_t = pmat::vec<::pmat::uint_t, pmat::ptr_t>;
 	using bytevec32_t = pmat::vec<uint32_t, uint8_t>;
 
 };
@@ -167,13 +180,15 @@ namespace pmat {
 		sv():type{},address{},refcnt{0},size{0},blessed{} { }
 		sv(const sv &v):type{v.type},address{v.address},refcnt{v.refcnt},size{v.size},blessed{v.blessed} { }
 	};
+	std::string to_string( const pmat::ptr_t &ptr);
+	std::string to_string( const pmat::sv &sv);
 
 	class sv_scalar:public sv {
 	public:
 		uint8_t flags;
 		uint64_t iv;
 		double nv;
-		uint64_t pvlen;
+		pmat::uint_t pvlen;
 		pmat::ptr_t ourstash;
 		std::string pv;
 
@@ -183,7 +198,7 @@ namespace pmat {
 
 	class sv_hash:public sv {
 	public:
-		pmat::uint count;
+		pmat::uint_t count;
 		pmat::ptr_t backrefs;
 		pmat::hash_elem_t elements;
 		sv_hash() { }
@@ -211,7 +226,7 @@ namespace pmat {
 
 	class sv_glob:public sv {
 	public:
-		uint64_t line;
+		pmat::uint_t line;
 		pmat::ptr_t stash;
 		pmat::ptr_t scalar;
 		pmat::ptr_t array;
@@ -227,7 +242,7 @@ namespace pmat {
 	};
 	class sv_array:public sv {
 	public:
-		uint64_t count;
+		pmat::uint_t count;
 		uint8_t flags;
 		std::vector<pmat::ptr_t> elements;
 		sv_array() { }
@@ -247,8 +262,8 @@ namespace pmat {
 	class sv_lvalue:public sv {
 	public:
 		uint8_t type;
-		pmat::uint offset;
-		pmat::uint length;
+		pmat::uint_t offset;
+		pmat::uint_t length;
 		pmat::ptr_t target;
 		sv_lvalue() { }
 		sv_lvalue(const sv &v):sv{v} { }
@@ -277,11 +292,11 @@ BOOST_FUSION_DEFINE_STRUCT(
 )
 BOOST_FUSION_DEFINE_STRUCT(
 	(pmat), sv_code_constix,
-	(uint64_t, padix)
+	(pmat::uint_t, padix)
 )
 BOOST_FUSION_DEFINE_STRUCT(
 	(pmat), sv_code_gvix,
-	(uint64_t, padix)
+	(pmat::uint_t, padix)
 )
 BOOST_FUSION_DEFINE_STRUCT(
 	(pmat), sv_code_padnames,
@@ -289,14 +304,14 @@ BOOST_FUSION_DEFINE_STRUCT(
 )
 BOOST_FUSION_DEFINE_STRUCT(
 	(pmat), sv_code_pad,
-	(uint64_t, depth)
+	(pmat::uint_t, depth)
 	(pmat::ptr_t, pad)
 )
 
 namespace pmat {
 	class sv_code:public sv {
 	public:
-		uint64_t line;
+		pmat::uint_t line;
 		uint8_t flags;
 		pmat::ptr_t op_root;
 		pmat::ptr_t stash;
@@ -307,9 +322,9 @@ namespace pmat {
 		std::string file;
 
 		pmat::ptr_t constsv_;
-		pmat::uint constix_;
+		pmat::uint_t constix_;
 		pmat::ptr_t gvsv_;
-		pmat::uint gvix_;
+		pmat::uint_t gvix_;
 		pmat::ptr_t padnames_;
 		std::vector<pmat::ptr_t> pads_;
 
@@ -346,30 +361,30 @@ BOOST_FUSION_ADAPT_STRUCT(
 	(pmat::sv_type_t, type)
 	(pmat::ptr_t, address)
 	(uint32_t, refcnt)
-	(uint64_t, size)
+	(pmat::uint_t, size)
 	(pmat::ptr_t, blessed)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
 	pmat::sv_scalar,
 	(uint8_t, flags)
-	(uint64_t, iv)
+	(pmat::uint_t, iv)
 	(double, nv)
-	(uint64_t, pvlen)
+	(pmat::uint_t, pvlen)
 	(pmat::ptr_t, ourstash)
 	(std::string, pv)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
 	pmat::sv_hash,
-	(pmat::uint, count)
+	(pmat::uint_t, count)
 	(pmat::ptr_t, backrefs)
 	(pmat::hash_elem_t, elements)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
 	pmat::sv_stash,
-	(pmat::uint, count)
+	(pmat::uint_t, count)
 	(pmat::ptr_t, backrefs)
 	(pmat::ptr_t, mro_linear_all)
 	(pmat::ptr_t, mro_linear_current)
@@ -388,7 +403,7 @@ BOOST_FUSION_ADAPT_STRUCT(
 
 BOOST_FUSION_ADAPT_STRUCT(
 	pmat::sv_glob,
-	(uint64_t, line)
+	(pmat::uint_t, line)
 	(pmat::ptr_t, stash)
 	(pmat::ptr_t, scalar)
 	(pmat::ptr_t, array)
@@ -403,7 +418,7 @@ BOOST_FUSION_ADAPT_STRUCT(
 
 BOOST_FUSION_ADAPT_STRUCT(
 	pmat::sv_array,
-	(uint64_t, count)
+	(pmat::uint_t, count)
 	(uint8_t, flags)
 	(std::vector<pmat::ptr_t>, elements)
 )
@@ -418,14 +433,14 @@ BOOST_FUSION_ADAPT_STRUCT(
 BOOST_FUSION_ADAPT_STRUCT(
 	pmat::sv_lvalue,
 	(uint8_t, type)
-	(pmat::uint, offset)
-	(pmat::uint, length)
+	(pmat::uint_t, offset)
+	(pmat::uint_t, length)
 	(pmat::ptr_t, target)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
 	pmat::sv_code,
-	(uint64_t, line)
+	(pmat::uint_t, line)
 	(uint8_t, flags)
 	(pmat::ptr_t, op_root)
 	(pmat::ptr_t, stash)
@@ -572,7 +587,7 @@ namespace pmat {
 		pmat::sv &sv_by_addr(const pmat::ptr_t &addr) const { return *(sv_by_addr_.at(addr)); }
 	
 		void dump_sv(const pmat::sv &sv) {
-			DEBUG << (void *) sv.address << ", type = " << (int) sv.type << " (" << sv_type_by_id(sv.type) << ")";
+			DEBUG << pmat::to_string(sv.address) << ", type = " << (int) sv.type << " (" << sv_type_by_id(sv.type) << ")";
 			switch(sv.type) {
 			case pmat::sv_type_t::SVtSCALAR:
 				{
@@ -592,19 +607,19 @@ namespace pmat {
 
 		/** Add an SV to our lists */
 		void add_sv(pmat::sv &sv) {
-			DEBUG << "Adding SV at " << (void *) sv.address;
+			DEBUG << "Adding SV " << pmat::to_string(sv);
 			assert(sv.type != sv_type_t::SVtEND);
 			assert(sv.type != sv_type_t::SVtUNKNOWN);
 			if(sv_by_addr_.cend() != sv_by_addr_.find(sv.address)) {
 				auto existing = sv_by_addr_[sv.address];
-				ERROR << "Already have address " << (void *)sv.address << " occupied by " << sv_type_by_id(existing->type);
+				ERROR << "Already have address " << pmat::to_string(sv.address) << " occupied by " << sv_type_by_id(existing->type);
 				dump_sv(sv);
 				dump_sv(*existing);
 				// assert(sv_by_addr_.cend() == sv_by_addr_.find(sv.address));
 				return;
 			}
 			sv_by_addr_[sv.address] = &sv;
-			if(sv.blessed == nullptr) {
+			if(sv.blessed == 0) {
 				++sv_count_by_type_[sv.type];
 				sv_size_by_type_[sv.type] += sv.size;
 			} else {
@@ -623,7 +638,7 @@ namespace pmat {
 				for(auto ptr : it->second) {
 					auto v = sv_by_addr(ptr);
 					assert(v.blessed == sv.address);
-					DEBUG << (void *)v.address << " from " << (void *)ptr << " being updated - blessed was " << (void*)(v.blessed) << " and we are " << (void*)sv.address;
+					DEBUG << pmat::to_string(v.address) << " from " << pmat::to_string(ptr) << " being updated - blessed was " << pmat::to_string(v.blessed) << " and we are " << pmat::to_string(sv.address);
 					update_blessed(v);
 				}
 				sv_blessed_pending_.erase(it);
@@ -665,7 +680,7 @@ namespace pmat {
 				if(sv->type == pmat::sv_type_t::SVtCODE) {
 					auto cv = static_cast<pmat::sv_code *>(sv);
 					DEBUG << "Have CODE SV at " << (void *)cv->address << " - " << cv->file << ":" << (int)cv->line;
-					if(cv->padlist == nullptr) {
+					if(cv->padlist == 0) {
 						INFO << "No PADLIST, skipping";
 						continue;
 					}
@@ -680,7 +695,7 @@ namespace pmat {
 						padlist->set_cv(cv);
 						replace_sv(old, padlist);
 					}
-					assert(cv->padnames_ != nullptr);
+					assert(cv->padnames_ != 0);
 					if(!have_sv_at(cv->padnames_)) {
 						ERROR << "No SV for padnames at " << (void *)cv->padnames_;
 					} else {
@@ -698,7 +713,7 @@ namespace pmat {
 						int idx = 0;
 						for(auto &ptr : cv->pads_) {
 							DEBUG << "Pad depth " << idx << " at " << (void *)ptr;
-							if(idx > 0 && ptr != nullptr) {
+							if(idx > 0 && ptr != 0) {
 								auto old_sv = sv_at(ptr);
 								DEBUG << "Item " << idx << " in the pad is " << sv_type_by_id(old_sv->type) << " with addr " << (void *)old_sv->address;
 								auto old = static_cast<pmat::sv_array *>(old_sv);
@@ -729,7 +744,7 @@ namespace pmat {
 	
 		std::string sv_blessed_type(const pmat::sv &sv) const {
 			auto base = sv_type_by_id(sv.type);
-			if(sv.blessed == nullptr) return base;
+			if(sv.blessed == 0) return base;
 			DEBUG << "We have " << (void *)sv.blessed << " as a blessed pointer";
 			auto bs = static_cast<const pmat::sv_stash *>(&(sv_by_addr(sv.blessed)));
 			if(bs->type != sv_type_t::SVtSTASH) {
