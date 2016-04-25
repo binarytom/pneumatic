@@ -326,12 +326,14 @@ namespace pmat {
 		pmat::uint_t line;
 		uint8_t flags;
 		pmat::ptr_t op_root;
+		uint32_t depth;
 		pmat::ptr_t stash;
 		pmat::ptr_t glob;
 		pmat::ptr_t outside;
 		pmat::ptr_t padlist;
 		pmat::ptr_t constval;
 		std::string file;
+		std::string name;
 
 		pmat::ptr_t constsv_;
 		pmat::uint_t constix_;

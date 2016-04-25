@@ -393,13 +393,15 @@ virtual ~reader()
 				(*this)(code->flags);
 				TRACE << " has " << code->line << " with flags " << (int) code->flags;
 				(*this)(code->op_root);
+				(*this)(code->depth);
 				(*this)(code->stash);
 				(*this)(code->glob);
 				(*this)(code->outside);
 				(*this)(code->padlist);
 				(*this)(code->constval);
 				(*this)(code->file);
-				TRACE << " file " << code->file;
+				(*this)(code->name);
+				TRACE << " file " << code->file << ", name " << code->name;
 				pmat::sv_code_type_t type;
 				(*this)(type);
 				while(type != pmat::sv_code_type_t::SVCtEND) {
