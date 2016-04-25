@@ -145,6 +145,13 @@ BOOST_FUSION_DEFINE_STRUCT(
 	(uint8_t, nstrs)
 )
 
+BOOST_FUSION_DEFINE_STRUCT(
+	(pmat), context,
+	(uint8_t, headerlen)
+	(uint8_t, nptrs)
+	(uint8_t, nstrs)
+)
+
 namespace pmat {
 	using typevec8_t = pmat::vec<uint8_t, pmat::type>;
 	using typevec16_t = pmat::vec<uint16_t, pmat::type>;
@@ -486,12 +493,14 @@ BOOST_FUSION_DEFINE_STRUCT(
 	(uint8_t, minor_ver)
 	(uint32_t, perl_ver)
 	(pmat::typevec8_t, types)
+	(pmat::typevec8_t, contexts)
 )
 
 namespace pmat {
 	class state_t {
 	public:
 		std::vector<pmat::type> types;
+		std::vector<pmat::context> contexts;
 
 		explicit state_t():file_offset_{0} { }
 		~state_t() {

@@ -514,6 +514,15 @@ virtual ~reader()
 		TRACE << "PMAT state now has " << pmat_state_.types.size() << " types - " << (void*)(&pmat_state_);
 	}
 
+    void operator()(pmat::context& v) const {
+		(*this)(v.headerlen);
+		(*this)(v.nptrs);
+		(*this)(v.nstrs);
+		TRACE << "Type: header " << (uint32_t) v.headerlen << ", nptrs " << (uint32_t) v.nptrs << ", nstrs " << (uint32_t) v.nstrs;
+		pmat_state_.contexts.push_back(v);
+		TRACE << "PMAT state now has " << pmat_state_.contexts.size() << " contexts - " << (void*)(&pmat_state_);
+	}
+
     void operator()(pmat::heap& val) const {
 		TRACE << "Starting on the heap";
 		std::vector<pmat::sv> items;
