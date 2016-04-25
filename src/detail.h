@@ -440,6 +440,14 @@ virtual ~reader()
 						code->pads_[cp.depth] = cp.pad; // .emplace_back(cp);
 						break;
 					}
+					case pmat::sv_code_type_t::SVCtPADNAME: {
+						auto cp = pmat::sv_code_padname { };
+						(*this)(cp);
+						DEBUG << "Had padix " << cp.padix << " for pad " << cp.padname << " with stash " << (void *)cp.ourstash;
+						//if(cp.depth >= code->pads_.size()) code->pads_.resize(cp.depth + 1);
+						//code->pads_[cp.depth] = cp.pad; // .emplace_back(cp);
+						break;
+					}
 					default: ERROR << "unknwon thing";
 					}
 					(*this)(type);

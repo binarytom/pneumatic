@@ -319,6 +319,12 @@ BOOST_FUSION_DEFINE_STRUCT(
 	(pmat::uint_t, depth)
 	(pmat::ptr_t, pad)
 )
+BOOST_FUSION_DEFINE_STRUCT(
+	(pmat), sv_code_padname,
+	(pmat::uint_t, padix)
+	(std::string, padname)
+	(pmat::ptr_t, ourstash)
+)
 
 namespace pmat {
 	class sv_code:public sv {
