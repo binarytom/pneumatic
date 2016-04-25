@@ -113,12 +113,13 @@ main(int argc, char **argv) {
 			DEBUG << i << " - " << s;
 			filename = s;
 		}
-	}	
-	size_t bytes;
-	{ // Work out how much we need to map
-		ifstream file(filename, ios::binary | ios::ate);
-		bytes = file.tellg();
 	}
+
+	// Work out how much we need to map
+	auto bytes = ([](const std::string &filename) {
+		ifstream in { filename, ios::binary | ios::ate };
+		return in.tellg();
+	})(filename);
 
 	// Map entire file
 	boost::iostreams::mapped_file_source file;
