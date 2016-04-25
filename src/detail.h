@@ -18,8 +18,8 @@
 #include <cxxabi.h>
 
 // haxx
-#define DEBUG_TYPE(x) ([]() -> std::string { typedef void(*T)x; return debug_type<T>(T(), #x).result; })()
-
+// #define DEBUG_TYPE(x) ([]() -> std::string { typedef void(*T)x; return debug_type<T>(T(), #x).result; })()
+#define DEBUG_TYPE(x) (std::string { "[type here]" })
 
 template<typename T>
 struct debug_type
