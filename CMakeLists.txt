@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 PROJECT(pneumatic)
-add_definitions(-std=gnu++11)
+add_definitions(-std=c++14)
 #set(Boost_USE_STATIC_LIBS        ON) # only find static libs
 set(Boost_USE_MULTITHREADED      ON)
 set(Boost_USE_STATIC_RUNTIME    OFF)
