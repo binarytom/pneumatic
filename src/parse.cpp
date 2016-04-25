@@ -14,6 +14,60 @@
 
 using namespace std;
 
+class pmat_file {
+public:
+	pmat_file(
+		const char *data,
+		size_t len
+	) {
+		pmat::state_t pm;
+		pmat::header fr;
+		asio::const_buffer remainder;
+		std::tie(fr, remainder) = detail::read<pmat::header>(asio::buffer(data, len), pm);
+		DEBUG << "PMAT state now has " << pm.types.size() << " types - " << (void *)(&pm);
+		DEBUG << "Magic (\"PMAT\"): " << fr.magic;
+		DEBUG << "Flags:";
+		DEBUG << " * Big-endian:  " << (fr.flags.big_endian ? "yes" : "no");
+		DEBUG << " * Int64:       " << (fr.flags.integer_64 ? "yes" : "no");
+		DEBUG << " * Ptr64:       " << (fr.flags.pointer_64 ? "yes" : "no");
+		DEBUG << " * Long double: " << (fr.flags.float_64 ? "yes" : "no");
+		DEBUG << " * Threads:     " << (fr.flags.threads ? "yes" : "no");
+		header_flags_ = fr.flags;
+
+		perl_version_ = net::ntoh(fr.perl_ver);
+		pmat_version_ = (static_cast<uint16_t>(fr.major_ver) << 8) | static_cast<uint16_t>(fr.minor_ver);
+		DEBUG << "PMAT format " << pmat_version_string() << " generated on Perl " << perl_version_string();
+
+		DEBUG << "Roots:";
+		pmat::roots roots;
+		std::tie(roots, remainder) = detail::read<pmat::roots>(remainder, pm);
+		DEBUG << "Stack:";
+		pmat::stack stack;
+		std::tie(stack, remainder) = detail::read<pmat::stack>(remainder, pm);
+		DEBUG << "Heap:";
+		pmat::heap heap;
+		std::tie(heap, remainder) = detail::read<pmat::heap>(remainder, pm);
+
+		pm.finish();
+	}
+
+	std::string perl_version_string() const {
+		int rev = (perl_version_) & 0xFF;
+		int ver = (uint16_t) ((perl_version_ >>  8) & 0xFFFF);
+		int sub = (uint16_t) ((perl_version_ >> 24) & 0xFFFF);
+		return to_string(rev) + "." + to_string(ver) + "." + to_string(sub);
+	}
+
+	std::string pmat_version_string() const {
+		return to_string(pmat_version_ >> 8) + "." + to_string(pmat_version_ & 0xFF);
+	}
+
+private:
+	uint32_t perl_version_;
+	uint16_t pmat_version_;
+	pmat::flags_t header_flags_;
+};
+
 int
 main(int argc, char **argv) {
 	namespace po = boost::program_options;
@@ -72,40 +126,7 @@ main(int argc, char **argv) {
 		exit(-1);
 	}
 
-	const char *data = file.data();
-	//while(is) {
-		auto len = bytes;
-
-		pmat::state_t pm;
-		pmat::header fr;
-		asio::const_buffer remainder;
-		std::tie(fr, remainder) = detail::read<pmat::header>(asio::buffer(data, len), pm);
-		DEBUG << "PMAT state now has " << pm.types.size() << " types - " << (void *)(&pm);
-		DEBUG << "Magic: " << fr.magic;
-		DEBUG << "Flags:";
-		DEBUG << " * Big-endian:  " << (fr.flags.big_endian ? "yes" : "no");
-		DEBUG << " * Int64:       " << (fr.flags.integer_64 ? "yes" : "no");
-		DEBUG << " * Ptr64:       " << (fr.flags.pointer_64 ? "yes" : "no");
-		DEBUG << " * Long double: " << (fr.flags.float_64 ? "yes" : "no");
-		DEBUG << " * Threads:     " << (fr.flags.threads ? "yes" : "no");
-		uint32_t pv = net::ntoh(fr.perl_ver);
-		int rev = (pv      ) & 0xFF;
-		int ver = (uint16_t) ((pv >>  8) & 0xFFFF);
-		int sub = (uint16_t) ((pv >> 24) & 0xFFFF);
-		DEBUG << "PMAT format " << to_string(fr.major_ver) << "." << to_string(fr.minor_ver) << " generated on Perl " << to_string(rev) << "." << to_string(ver) << "." << to_string(sub);
-
-		DEBUG << "Roots:";
-		pmat::roots roots;
-		std::tie(roots, remainder) = detail::read<pmat::roots>(remainder, pm);
-		DEBUG << "Stack:";
-		pmat::stack stack;
-		std::tie(stack, remainder) = detail::read<pmat::stack>(remainder, pm);
-		DEBUG << "Heap:";
-		pmat::heap heap;
-		std::tie(heap, remainder) = detail::read<pmat::heap>(remainder, pm);
-
-		pm.finish();
-	//}
+	pmat_file pf { file.data(), bytes };
 	DEBUG << "Done";
 	return 0;
 }
