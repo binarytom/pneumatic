@@ -83,6 +83,8 @@ main(int argc, char **argv) {
 		po::parse_command_line(
 			argc, argv, desc
 		),
+		 // .positional(p)
+		 // .run(),
 		vm
 	);
 	po::notify(vm);    
