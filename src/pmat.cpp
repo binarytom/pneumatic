@@ -77,3 +77,4 @@ std::string pmat::to_string(
 	return (format("SV at 0x%08x type %02x") % (uint64_t)sv.address % (int)sv.type).str();
 }
 
+std::string pmat::to_string(const pmat::ctx &ctx) { return "ctx " + ctx.file + ": " + std::to_string(ctx.line); }

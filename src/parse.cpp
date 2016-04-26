@@ -41,12 +41,22 @@ public:
 		DEBUG << "Roots:";
 		pmat::roots roots;
 		std::tie(roots, remainder) = detail::read<pmat::roots>(remainder, pm);
+		pm.add_sv(std::make_shared<pmat::sv_undef>(roots.undef));
+		DEBUG << "Undef: " << pm.sv_at(roots.undef)->address;
+		pm.add_sv(std::make_shared<pmat::sv_yes>(roots.yes));
+		DEBUG << "Yes:   " << pm.sv_at(roots.yes)->address;
+		pm.add_sv(std::make_shared<pmat::sv_no>(roots.no));
+		DEBUG << "No:   " << pm.sv_at(roots.no)->address;
 		DEBUG << "Stack:";
 		pmat::stack stack;
 		std::tie(stack, remainder) = detail::read<pmat::stack>(remainder, pm);
 		DEBUG << "Heap:";
 		pmat::heap heap;
 		std::tie(heap, remainder) = detail::read<pmat::heap>(remainder, pm);
+		DEBUG << "Context:";
+		pmat::context ctx;
+		// std::tie(ctx, remainder) = detail::read<pmat::context>(remainder, pm);
+		DEBUG << "End of sections";
 
 		pm.finish();
 	}
@@ -99,7 +109,7 @@ main(int argc, char **argv) {
 		namespace logging = boost::log;
 		logging::core::get()->set_filter(
 			/* phoenix template thingey, comparison is stored not the result */
-			logging::trivial::severity >= logging::trivial::severity_level::debug
+			logging::trivial::severity > logging::trivial::severity_level::debug
 		);
 	}
 

@@ -99,6 +99,7 @@ namespace pmat {
 		SVtMAGIC = 0x80,
 		SVtUNKNOWN = 0xFF
 	};
+	using ctx_type_t = uint8_t;
 
 	/** The information attached to coderef bodies */
 	enum class sv_code_type_t : std::uint8_t {
@@ -207,6 +208,21 @@ namespace pmat {
 		sv_scalar() { }
 		sv_scalar(const sv &v):sv{v} { }
 	};
+	class sv_undef:public sv_scalar {
+	public:
+		sv_undef(pmat::ptr_t ptr) { address = ptr; type = pmat::sv_type_t::SVtSCALAR; iv = 0; nv = 0.0f; pvlen = 0; }
+		sv_undef(const sv_scalar &v):sv_scalar{v} { }
+	};
+	class sv_yes:public sv_scalar {
+	public:
+		sv_yes(pmat::ptr_t ptr) { address = ptr; type = pmat::sv_type_t::SVtSCALAR; iv = 1; nv = 1.0f; pvlen = 3; pv = "yes"; }
+		sv_yes(const sv_scalar &v):sv_scalar{v} { }
+	};
+	class sv_no:public sv_scalar {
+	public:
+		sv_no(pmat::ptr_t ptr) { address = ptr; type = pmat::sv_type_t::SVtSCALAR; iv = 0; nv = 0.0f; pvlen = 2; pv = "no"; }
+		sv_no(const sv_scalar &v):sv_scalar{v} { }
+	};
 
 	class sv_hash:public sv {
 	public:
@@ -291,6 +307,46 @@ namespace pmat {
 	public:
 		sv_format() { }
 		sv_format(const sv &v):sv{v} { }
+	};
+
+	class ctx {
+	public:
+		pmat::ctx_type_t type;
+		uint8_t gimme;
+		pmat::uint_t line;
+		std::string file;
+
+		ctx():type{},gimme{},line{0} { }
+		ctx(
+			const ctx &v
+		):type(v.type),
+		  gimme(v.type),
+		  line(v.line),
+		  file(v.file)
+		{ }
+	};
+	std::string to_string( const pmat::ctx &ctx);
+
+	class ctx_sub:public ctx {
+	public:
+		uint32_t old_depth;
+		pmat::ptr_t cv;
+		pmat::ptr_t args;
+
+		ctx_sub() { }
+		ctx_sub(const ctx &v):ctx{v} { }
+	};
+	class ctx_try:public ctx {
+	public:
+		ctx_try() { }
+		ctx_try(const ctx &v):ctx{v} { }
+	};
+	class ctx_eval:public ctx {
+	public:
+		pmat::ptr_t cv;
+
+		ctx_eval() { }
+		ctx_eval(const ctx &v):ctx{v} { }
 	};
 };
 
@@ -471,6 +527,24 @@ BOOST_FUSION_ADAPT_STRUCT(
 	(std::string, file)
 )
 
+BOOST_FUSION_ADAPT_STRUCT(
+	pmat::ctx,
+	(pmat::ctx_type_t, type)
+	(uint8_t, gimme)
+	(pmat::uint_t, line)
+	(std::string, file)
+)
+BOOST_FUSION_ADAPT_STRUCT(
+	pmat::ctx_sub,
+	(uint32_t, old_depth)
+	(pmat::ptr_t, cv)
+	(pmat::ptr_t, args)
+)
+BOOST_FUSION_ADAPT_STRUCT(
+	pmat::ctx_eval,
+	(pmat::ptr_t, cv)
+)
+
 	/*
 BOOST_FUSION_DEFINE_STRUCT(
 	(pmat), sv_invlist,
@@ -490,6 +564,10 @@ BOOST_FUSION_DEFINE_STRUCT(
 BOOST_FUSION_DEFINE_STRUCT(
 	(pmat), heap,
 	(std::vector<pmat::sv>, svs)
+)
+BOOST_FUSION_DEFINE_STRUCT(
+	(pmat), ctx_section,
+	(std::vector<pmat::ctx>, contexts)
 )
 
 BOOST_FUSION_DEFINE_STRUCT(
