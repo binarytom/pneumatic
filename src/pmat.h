@@ -348,28 +348,28 @@ namespace pmat {
 		pmat::ptr_t padnames_;
 		std::vector<pmat::ptr_t> pads_;
 
-		std::vector<pmat::sv *> pad_svs_;
+		std::vector<std::weak_ptr<pmat::sv>> pad_svs_;
 
 		sv_code() { }
 		sv_code(const sv &v):sv{v} { }
 	};
 	class sv_padlist:public sv_array {
 	public:
-		void set_cv(pmat::sv_code *cv) { }
+		void set_cv(std::shared_ptr<pmat::sv_code> cv) { }
 		sv_padlist() { }
 		sv_padlist(const sv &v) = delete;
 		sv_padlist(const sv_array &v):sv_array{v} { type = sv_type_t::SVtPADLIST; }
 	};
 	class sv_padnames:public sv_array {
 	public:
-		void set_cv(pmat::sv_code *cv) { }
+		void set_cv(std::shared_ptr<pmat::sv_code> cv) { }
 		sv_padnames() { }
 		sv_padnames(const sv &v) = delete;
 		sv_padnames(const sv_array &v):sv_array{v} { type = sv_type_t::SVtPADNAMES;  }
 	};
 	class sv_pad:public sv_array {
 	public:
-		void set_cv(pmat::sv_code *cv) { }
+		void set_cv(std::shared_ptr<pmat::sv_code> cv) { }
 		sv_pad() { }
 		sv_pad(const sv &v) = delete;
 		sv_pad(const sv_array &v):sv_array{v} { type = sv_type_t::SVtPAD;  }
@@ -606,7 +606,7 @@ namespace pmat {
 			DEBUG << "Expecting " << (int)sv_by_addr_.size() << " SVs, had " << count;
 		}
 
-		pmat::sv &sv_by_addr(const pmat::ptr_t &addr) const { return *(sv_by_addr_.at(addr)); }
+		std::shared_ptr<pmat::sv> sv_by_addr(const pmat::ptr_t &addr) const { return sv_by_addr_.at(addr); }
 	
 		void dump_sv(const pmat::sv &sv) {
 			DEBUG << pmat::to_string(sv.address) << ", type = " << (int) sv.type << " (" << sv_type_by_id(sv.type) << ")";
@@ -628,40 +628,40 @@ namespace pmat {
 		}
 
 		/** Add an SV to our lists */
-		void add_sv(pmat::sv &sv) {
-			DEBUG << "Adding SV " << pmat::to_string(sv);
-			assert(sv.type != sv_type_t::SVtEND);
-			assert(sv.type != sv_type_t::SVtUNKNOWN);
-			if(sv_by_addr_.cend() != sv_by_addr_.find(sv.address)) {
-				auto existing = sv_by_addr_[sv.address];
-				ERROR << "Already have address " << pmat::to_string(sv.address) << " occupied by " << sv_type_by_id(existing->type);
-				dump_sv(sv);
+		void add_sv(std::shared_ptr<pmat::sv> sv) {
+			DEBUG << "Adding SV " << pmat::to_string(*sv);
+			assert(sv->type != sv_type_t::SVtEND);
+			assert(sv->type != sv_type_t::SVtUNKNOWN);
+			if(sv_by_addr_.cend() != sv_by_addr_.find(sv->address)) {
+				auto existing = sv_by_addr_[sv->address];
+				ERROR << "Already have address " << pmat::to_string(sv->address) << " occupied by " << sv_type_by_id(existing->type);
+				dump_sv(*sv);
 				dump_sv(*existing);
-				// assert(sv_by_addr_.cend() == sv_by_addr_.find(sv.address));
+				// assert(sv_by_addr_.cend() == sv_by_addr_.find(sv->address));
 				return;
 			}
-			sv_by_addr_[sv.address] = &sv;
-			if(sv.blessed == 0) {
-				++sv_count_by_type_[sv.type];
-				sv_size_by_type_[sv.type] += sv.size;
+			sv_by_addr_[sv->address] = sv;
+			if(sv->blessed == 0) {
+				++sv_count_by_type_[sv->type];
+				sv_size_by_type_[sv->type] += sv->size;
 			} else {
-				update_blessed(sv);
+				update_blessed(*sv);
 			}
-			DEBUG << "SV stats for [" << sv_type_by_id(sv.type) << "] on " << (void *)this << ": count " << sv_count_by_type_[sv.type] << " size " << sv_size_by_type_[sv.type];
+			DEBUG << "SV stats for [" << sv_type_by_id(sv->type) << "] on " << (void *)this << ": count " << sv_count_by_type_[sv->type] << " size " << sv_size_by_type_[sv->type];
 
 			/* Was anything waiting for us to provide information for a blessed slot? */
-			auto it = sv_blessed_pending_.find(sv.address);
+			auto it = sv_blessed_pending_.find(sv->address);
 			if(sv_blessed_pending_.cend() != it) {
 				DEBUG << "Found " << it->second.size() << " items relying on this SV for blessed pointer";
 				/* If something is using us as a blessed pointer, we must be a stash */
-				assert(sv.type == sv_type_t::SVtSTASH);
-				auto st = reinterpret_cast<pmat::sv_stash *>(&sv);
+				assert(sv->type == sv_type_t::SVtSTASH);
+				auto st = std::static_pointer_cast<pmat::sv_stash>(sv);
 				DEBUG << "Type " << sv_type_by_id(st->type) << ", name is " << st->name;
 				for(auto ptr : it->second) {
 					auto v = sv_by_addr(ptr);
-					assert(v.blessed == sv.address);
-					DEBUG << pmat::to_string(v.address) << " from " << pmat::to_string(ptr) << " being updated - blessed was " << pmat::to_string(v.blessed) << " and we are " << pmat::to_string(sv.address);
-					update_blessed(v);
+					assert(v->blessed == sv->address);
+					DEBUG << pmat::to_string(v->address) << " from " << pmat::to_string(ptr) << " being updated - blessed was " << pmat::to_string(v->blessed) << " and we are " << pmat::to_string(sv->address);
+					update_blessed(*v);
 				}
 				sv_blessed_pending_.erase(it);
 			}
@@ -672,7 +672,7 @@ namespace pmat {
 			return sv_by_addr_.cend() != sv_by_addr_.find(ptr);
 	   	}
 
-		pmat::sv *sv_at(const pmat::ptr_t ptr) {
+		std::shared_ptr<pmat::sv> sv_at(const pmat::ptr_t ptr) {
 			return sv_by_addr_.at(ptr);
 	   	}
 
@@ -700,7 +700,7 @@ namespace pmat {
 			for(auto it : sv_by_addr_) {
 				auto sv = it.second;
 				if(sv->type == pmat::sv_type_t::SVtCODE) {
-					auto cv = static_cast<pmat::sv_code *>(sv);
+					auto cv = std::static_pointer_cast<pmat::sv_code>(sv);
 					DEBUG << "Have CODE SV at " << (void *)cv->address << " - " << cv->file << ":" << (int)cv->line;
 					if(cv->padlist == 0) {
 						INFO << "No PADLIST, skipping";
@@ -709,11 +709,12 @@ namespace pmat {
 
 					if(!have_sv_at(cv->padlist)) {
 						ERROR << "Padlist points to CV that does not exist - " << (void *)cv->padlist;
+						continue;
 					} else {
 						DEBUG << "Upgrading padlist at address [" << (void *)cv->padlist << "]";
-						auto old = static_cast<pmat::sv_array *>(sv_at(cv->padlist));
+						auto old = std::static_pointer_cast<pmat::sv_array>(sv_at(cv->padlist));
 						assert(old->type == sv_type_t::SVtARRAY);
-						auto padlist = new pmat::sv_padlist { *old };
+						auto padlist = std::make_shared<pmat::sv_padlist>(*old);
 						padlist->set_cv(cv);
 						replace_sv(old, padlist);
 					}
@@ -722,9 +723,9 @@ namespace pmat {
 						ERROR << "No SV for padnames at " << (void *)cv->padnames_;
 					} else {
 						DEBUG << "Upgrading padnames at address [" << (void *)cv->padnames_ << "]";
-						auto old = static_cast<pmat::sv_array *>(sv_at(cv->padnames_));
+						auto old = std::static_pointer_cast<pmat::sv_array>(sv_at(cv->padnames_));
 						assert(old->type == sv_type_t::SVtARRAY);
-						auto padnames = new pmat::sv_padnames { *old };
+						auto padnames = std::make_shared<pmat::sv_padnames>(*old);
 						assert(old->count == padnames->count);
 						assert(old->elements.size() == padnames->elements.size());
 						assert(old->elements.size() == padnames->count);
@@ -738,9 +739,9 @@ namespace pmat {
 							if(idx > 0 && ptr != 0) {
 								auto old_sv = sv_at(ptr);
 								DEBUG << "Item " << idx << " in the pad is " << sv_type_by_id(old_sv->type) << " with addr " << (void *)old_sv->address;
-								auto old = static_cast<pmat::sv_array *>(old_sv);
+								auto old = std::static_pointer_cast<pmat::sv_array>(old_sv);
 								assert(old->type == sv_type_t::SVtARRAY);
-								auto pad = new pmat::sv_pad { *old };
+								auto pad = std::make_shared<pmat::sv_pad>(*old);
 								pad->set_cv(cv);
 								replace_sv(old, pad);
 								cv->pad_svs_.emplace_back(pad);
@@ -752,7 +753,7 @@ namespace pmat {
 			}
 		}
 
-		void replace_sv(pmat::sv *was, pmat::sv *now) {
+		void replace_sv(std::shared_ptr<pmat::sv> was, std::shared_ptr<pmat::sv> now) {
 			assert(was->address == now->address);
 			--sv_count_by_type_[was->type];
 			sv_size_by_type_[was->type] -= was->size;
@@ -761,14 +762,13 @@ namespace pmat {
 			sv_size_by_type_[now->type] += now->size;
 
 			sv_by_addr_[was->address] = now;
-			delete was;
 		}
 	
 		std::string sv_blessed_type(const pmat::sv &sv) const {
 			auto base = sv_type_by_id(sv.type);
 			if(sv.blessed == 0) return base;
 			DEBUG << "We have " << (void *)sv.blessed << " as a blessed pointer";
-			auto bs = static_cast<const pmat::sv_stash *>(&(sv_by_addr(sv.blessed)));
+			auto bs = std::static_pointer_cast<pmat::sv_stash>(sv_by_addr(sv.blessed));
 			if(bs->type != sv_type_t::SVtSTASH) {
 				ERROR << "We have something that has been blessed into something that isn't a stash: " << sv_type_by_id(bs->type);
 				return base;
@@ -800,7 +800,7 @@ namespace pmat {
 			}
 		}
 	private:
-		std::map<pmat::ptr_t, pmat::sv*> sv_by_addr_;
+		std::map<pmat::ptr_t, std::shared_ptr<pmat::sv>> sv_by_addr_;
 		std::map<pmat::sv_type_t, size_t> sv_count_by_type_;
 		std::map<std::string, size_t> sv_count_by_blessed_type_;
 		std::map<pmat::sv_type_t, size_t> sv_size_by_type_;

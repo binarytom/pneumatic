@@ -287,7 +287,7 @@ virtual ~reader()
 			switch(v.type) {
 			case pmat::sv_type_t::SVtSCALAR: {
 				TRACE << "This is a scalar";
-				auto scalar = new pmat::sv_scalar { v };
+				auto scalar = std::make_shared<pmat::sv_scalar>(v);
 				(*this)(scalar->flags);
 				if(scalar->flags & ~0x1f) {
 					ERROR << "Invalid flags " << (int)scalar->flags;
@@ -308,20 +308,20 @@ virtual ~reader()
 				TRACE << "reading pv data";
 				(*this)(scalar->pv);
 				TRACE << "pv = " << scalar->pv;
-				pmat_state_.add_sv(*scalar);
+				pmat_state_.add_sv(scalar);
 				break;
 			}
 			case pmat::sv_type_t::SVtGLOB: {
 				TRACE << "This is a glob";
-				auto glob = new pmat::sv_glob { v };
+				auto glob = std::make_shared<pmat::sv_glob>(v);
 				(*this)(*glob);
 				TRACE << " glob name " << glob->name << " from file " << std::string { glob->file };
-				pmat_state_.add_sv(*glob);
+				pmat_state_.add_sv(glob);
 				break;
 			}
 			case pmat::sv_type_t::SVtARRAY: {
 				TRACE << "This be array";
-				auto array = new pmat::sv_array { v };
+				auto array = std::make_shared<pmat::sv_array>(v);
 				(*this)(array->count);
 				(*this)(array->flags);
 				TRACE << " has " << array->count << " elements with flags " << (int) array->flags;
@@ -331,12 +331,12 @@ virtual ~reader()
 					array->elements.emplace_back(ptr);
 				}
 				assert(array->count == array->elements.size());
-				pmat_state_.add_sv(*array);
+				pmat_state_.add_sv(array);
 				break;
 			}
 			case pmat::sv_type_t::SVtHASH: {
 				TRACE << "Hash time";
-				auto hash = new pmat::sv_hash { v };
+				auto hash = std::make_shared<pmat::sv_hash>(v);
 				(*this)(hash->count);
 				(*this)(hash->backrefs);
 				std::map<std::string, pmat::ptr_t> out;
@@ -349,12 +349,12 @@ virtual ~reader()
 					out[k] = ptr;
 					TRACE << " key " << k << " == " << (void *) ptr;
 				}
-				pmat_state_.add_sv(*hash);
+				pmat_state_.add_sv(hash);
 				break;
 			}
 			case pmat::sv_type_t::SVtSTASH: {
 				TRACE << "Stash time";
-				auto stash = new pmat::sv_stash { v };
+				auto stash = std::make_shared<pmat::sv_stash>(v);
 				(*this)(stash->count);
 				(*this)(stash->backrefs);
 				(*this)(stash->mro_linear_all);
@@ -373,25 +373,25 @@ virtual ~reader()
 					out[k] = ptr;
 					TRACE << " key " << k << " == " << (void *) ptr;
 				}
-				pmat_state_.add_sv(*stash);
+				pmat_state_.add_sv(stash);
 				break;
 			}
 			case pmat::sv_type_t::SVtREF: {
 				TRACE << "REF time";
-				auto ref = new pmat::sv_ref { v };
+				auto ref = std::make_shared<pmat::sv_ref>(v);
 				(*this)(*ref);
 				if(ref->flags & 1) {
 					TRACE << "This ref is weak";
 				}
-				pmat_state_.add_sv(*ref);
+				pmat_state_.add_sv(ref);
 				break;
 			}
 			case pmat::sv_type_t::SVtCODE: {
-				TRACE << "We have code";
-				auto code = new pmat::sv_code { v };
+				DEBUG << "We have code";
+				auto code = std::make_shared<pmat::sv_code>(v);
 				(*this)(code->line);
 				(*this)(code->flags);
-				TRACE << " has " << code->line << " with flags " << (int) code->flags;
+				DEBUG << " has " << code->line << " with flags " << (int) code->flags;
 				(*this)(code->op_root);
 				(*this)(code->depth);
 				(*this)(code->stash);
@@ -401,7 +401,7 @@ virtual ~reader()
 				(*this)(code->constval);
 				(*this)(code->file);
 				(*this)(code->name);
-				TRACE << " file " << code->file << ", name " << code->name;
+				DEBUG << " file " << code->file << ", name " << code->name;
 				pmat::sv_code_type_t type;
 				(*this)(type);
 				while(type != pmat::sv_code_type_t::SVCtEND) {
@@ -409,41 +409,41 @@ virtual ~reader()
 					switch(type) {
 					case pmat::sv_code_type_t::SVCtCONSTSV: {
 						(*this)(code->constsv_);
-						TRACE << "Had constsv " << (void*)code->constsv_;
+						DEBUG << "Had constsv " << (void*)code->constsv_;
 						break;
 					}
 					case pmat::sv_code_type_t::SVCtCONSTIX: {
 						(*this)(code->constix_);
-						TRACE << "Had constix " << code->constix_;
+						DEBUG << "Had constix " << code->constix_;
 						break;
 					}
 					case pmat::sv_code_type_t::SVCtGVSV: {
 						(*this)(code->gvsv_);
-						TRACE << "Had GVSV " << (void *)code->gvsv_;
+						DEBUG << "Had GVSV " << (void *)code->gvsv_;
 						break;
 					}
 					case pmat::sv_code_type_t::SVCtGVIX: {
 						(*this)(code->gvix_);
-						TRACE << "Had GVIX " << code->gvix_;
+						DEBUG << "Had GVIX " << code->gvix_;
 						break;
 					}
 					case pmat::sv_code_type_t::SVCtPADNAMES: {
 						(*this)(code->padnames_);
-						TRACE << "Had padnames " << (void *)code->padnames_;
+						DEBUG << "Had padnames " << (void *)code->padnames_;
 						break;
 					}
 					case pmat::sv_code_type_t::SVCtPAD: {
-						auto cp = pmat::sv_code_pad { };
-						(*this)(cp);
-						DEBUG << "Had depth " << cp.depth << " pad " << (void *)cp.pad;
-						if(cp.depth >= code->pads_.size()) code->pads_.resize(cp.depth + 1);
-						code->pads_[cp.depth] = cp.pad; // .emplace_back(cp);
+						auto cp = std::make_shared<pmat::sv_code_pad>();
+						(*this)(*cp);
+						DEBUG << "Had pad, depth " << cp->depth << " pad " << (void *)cp->pad;
+						if(cp->depth >= code->pads_.size()) code->pads_.resize(cp->depth + 1);
+						code->pads_[cp->depth] = cp->pad; // .emplace_back(cp);
 						break;
 					}
 					case pmat::sv_code_type_t::SVCtPADNAME: {
-						auto cp = pmat::sv_code_padname { };
-						(*this)(cp);
-						DEBUG << "Had padix " << cp.padix << " for pad " << cp.padname << " with stash " << (void *)cp.ourstash;
+						auto cp = std::make_shared<pmat::sv_code_padname>();
+						(*this)(*cp);
+						DEBUG << "Had padix " << cp->padix << " for pad " << cp->padname << " with stash " << (void *)cp->ourstash;
 						//if(cp.depth >= code->pads_.size()) code->pads_.resize(cp.depth + 1);
 						//code->pads_[cp.depth] = cp.pad; // .emplace_back(cp);
 						break;
@@ -452,39 +452,39 @@ virtual ~reader()
 					}
 					(*this)(type);
 				}
-				pmat_state_.add_sv(*code);
+				pmat_state_.add_sv(code);
 				break;
 			}
 			case pmat::sv_type_t::SVtIO: {
 				TRACE << "IO";
-				auto io = new pmat::sv_io { v };
+				auto io = std::make_shared<pmat::sv_io>(v);
 				(*this)(*io);
-				pmat_state_.add_sv(*io);
+				pmat_state_.add_sv(io);
 				break;
 			}
 			case pmat::sv_type_t::SVtLVALUE: {
 				TRACE << "LVALUE";
-				auto lv = new pmat::sv_lvalue { v };
+				auto lv = std::make_shared<pmat::sv_lvalue>(v);
 				(*this)(*lv);
-				pmat_state_.add_sv(*lv);
+				pmat_state_.add_sv(lv);
 				break;
 			}
 			case pmat::sv_type_t::SVtREGEXP: {
 				TRACE << "Regexp";
-				auto re = new pmat::sv_regexp { v };
-				pmat_state_.add_sv(*re);
+				auto re = std::make_shared<pmat::sv_regexp>(v);
+				pmat_state_.add_sv(re);
 				break;
 			}
 			case pmat::sv_type_t::SVtFORMAT: {
 				TRACE << "Format";
-				auto form = new pmat::sv_format { v };
-				pmat_state_.add_sv(*form);
+				auto form = std::make_shared<pmat::sv_format>(v);
+				pmat_state_.add_sv(form);
 				break;
 			}
 			case pmat::sv_type_t::SVtINVLIST: {
 				TRACE << "Invlist";
-				auto invlist = new pmat::sv_invlist { v };
-				pmat_state_.add_sv(*invlist);
+				auto invlist = std::make_shared<pmat::sv_invlist>(v);
+				pmat_state_.add_sv(invlist);
 				break;
 			}
 			case pmat::sv_type_t::SVtUNKNOWN: {
