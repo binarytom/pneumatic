@@ -780,7 +780,7 @@ namespace pmat {
 			}
 
 			/* Apply fixup to every SV */
-			for(auto it : sv_by_addr_) {
+			for(const auto &it : sv_by_addr_) {
 				auto sv = it.second;
 				if(sv->type == pmat::sv_type_t::SVtCODE) {
 					auto cv = std::static_pointer_cast<pmat::sv_code>(sv);
