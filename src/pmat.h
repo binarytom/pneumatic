@@ -280,6 +280,9 @@ namespace pmat {
 
 	class sv_io:public sv {
 	public:
+        uint_t ifileno_;
+        uint_t ofileno_;
+
 		pmat::ptr_t top;
 		pmat::ptr_t format;
 		pmat::ptr_t bottom;
@@ -501,6 +504,8 @@ BOOST_FUSION_ADAPT_STRUCT(
 
 BOOST_FUSION_ADAPT_STRUCT(
 	pmat::sv_io,
+	(pmat::uint_t, ifileno_)
+	(pmat::uint_t, ofileno_)
 	(pmat::ptr_t, top)
 	(pmat::ptr_t, format)
 	(pmat::ptr_t, bottom)
