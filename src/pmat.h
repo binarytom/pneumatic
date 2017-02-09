@@ -801,36 +801,45 @@ namespace pmat {
 						padlist->set_cv(cv);
 						replace_sv(old, padlist);
 					}
+					if(cv->padnames_ == 0) {
+                        DEBUG << "No padnames for this CV, skipping";
+                        continue;
+                    }
+
 					assert(cv->padnames_ != 0);
 					if(!have_sv_at(cv->padnames_)) {
 						ERROR << "No SV for padnames at " << (void *)cv->padnames_;
 					} else {
 						DEBUG << "Upgrading padnames at address [" << (void *)cv->padnames_ << "]";
 						auto old = std::static_pointer_cast<pmat::sv_array>(sv_at(cv->padnames_));
-						assert(old->type == sv_type_t::SVtARRAY);
-						auto padnames = std::make_shared<pmat::sv_padnames>(*old);
-						assert(old->count == padnames->count);
-						assert(old->elements.size() == padnames->elements.size());
-						assert(old->elements.size() == padnames->count);
-						padnames->set_cv(cv);
-						replace_sv(old, padnames);
+						// assert(old->type == sv_type_t::SVtARRAY);
+						if(old->type == sv_type_t::SVtARRAY) {
+                            auto padnames = std::make_shared<pmat::sv_padnames>(*old);
+                            assert(old->count == padnames->count);
+                            assert(old->elements.size() == padnames->elements.size());
+                            assert(old->elements.size() == padnames->count);
+                            padnames->set_cv(cv);
+                            replace_sv(old, padnames);
 
-						DEBUG << "Total of " << cv->pads_.size() << " items to convert to pads";
-						int idx = 0;
-						for(auto &ptr : cv->pads_) {
-							DEBUG << "Pad depth " << idx << " at " << (void *)ptr;
-							if(idx > 0 && ptr != 0) {
-								auto old_sv = sv_at(ptr);
-								DEBUG << "Item " << idx << " in the pad is " << sv_type_by_id(old_sv->type) << " with addr " << (void *)old_sv->address;
-								auto old = std::static_pointer_cast<pmat::sv_array>(old_sv);
-								assert(old->type == sv_type_t::SVtARRAY);
-								auto pad = std::make_shared<pmat::sv_pad>(*old);
-								pad->set_cv(cv);
-								replace_sv(old, pad);
-								cv->pad_svs_.emplace_back(pad);
-							}
-							++idx;
-						}
+                            DEBUG << "Total of " << cv->pads_.size() << " items to convert to pads";
+                            int idx = 0;
+                            for(auto &ptr : cv->pads_) {
+                                DEBUG << "Pad depth " << idx << " at " << (void *)ptr;
+                                if(idx > 0 && ptr != 0) {
+                                    auto old_sv = sv_at(ptr);
+                                    DEBUG << "Item " << idx << " in the pad is " << sv_type_by_id(old_sv->type) << " with addr " << (void *)old_sv->address;
+                                    auto old = std::static_pointer_cast<pmat::sv_array>(old_sv);
+                                    assert(old->type == sv_type_t::SVtARRAY);
+                                    auto pad = std::make_shared<pmat::sv_pad>(*old);
+                                    pad->set_cv(cv);
+                                    replace_sv(old, pad);
+                                    cv->pad_svs_.emplace_back(pad);
+                                }
+                                ++idx;
+                            }
+                        } else {
+                            ERROR << "padnames at address [" << (void *)cv->padnames_ << "] should be an array, but aren't";
+                        }
 					}
 				}
 			}
